@@ -1,0 +1,40 @@
+services:
+  mysql-users:
+    image: mysql:8.4
+    container_name: dmh-mysql-users
+    environment:
+      MYSQL_DATABASE: users_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: dmh_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-users-data:/var/lib/mysql
+
+  mysql-accounts:
+    image: mysql:8.4
+    container_name: dmh-mysql-accounts
+    environment:
+      MYSQL_DATABASE: accounts_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: dmh_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql-accounts-data:/var/lib/mysql
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: dmh-keycloak
+    command: start-dev
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    ports:
+      - "8180:8080"
+
+volumes:
+  mysql-users-data:
+  mysql-accounts-data:

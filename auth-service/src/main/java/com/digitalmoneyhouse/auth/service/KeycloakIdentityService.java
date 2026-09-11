@@ -95,6 +95,18 @@ public class KeycloakIdentityService {
         return userId;
     }
 
+    public void logoutUser(UUID userId) {
+        String token = tokenService.getServiceAccessToken();
+
+        restClient.post()
+            .uri(baseUrl + "/admin/realms/" + realm
+                + "/users/" + userId
+                + "/logout")
+            .headers(headers -> headers.setBearerAuth(token))
+            .retrieve()
+            .toBodilessEntity();
+    }
+
     private void assignUserRole(UUID userId, String token) {
         Map<?, ?> userRole = restClient.get()
             .uri(baseUrl + "/admin/realms/" + realm + "/roles/USER")

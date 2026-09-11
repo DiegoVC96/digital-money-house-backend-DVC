@@ -11,7 +11,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import com.digitalmoneyhouse.auth.api.AuthDtos.LogoutRequest;
+import org.springframework.security.core.Authentication;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -45,9 +46,18 @@ public class AuthController {
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-        @Valid @RequestBody LogoutRequest request
+        Authentication authentication
     ) {
-        authService.logout(request);
+        if (authentication == null || authentication.getName() == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            UUID userId = UUID.fromString(authentication.getName());
+            authService.logout(userId);
+        } catch (IllegalArgumentException ex) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         return ResponseEntity.ok().build();
     }

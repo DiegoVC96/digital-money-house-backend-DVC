@@ -1,6 +1,5 @@
 package com.digitalmoneyhouse.auth.service;
 
-import com.digitalmoneyhouse.auth.api.AuthDtos.LogoutRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.RegisterRequest;
 import com.digitalmoneyhouse.auth.client.AccountsClient;
 import com.digitalmoneyhouse.auth.client.UsersClient;
@@ -105,6 +104,8 @@ class AuthServiceTest {
         assertEquals("lucia@example.com", response.user().email());
         assertEquals("sol.luna.rio", response.account().alias());
         assertEquals("1234567890123456789012", response.account().cvu());
+        assertEquals("1198765432", response.user().phone());
+        assertEquals("34567890", response.user().dni());
         assertNotNull(response.accessToken());
 
         verify(usersClient).create(any());
@@ -112,9 +113,11 @@ class AuthServiceTest {
     }
 
     @Test
-    void delegatesLogoutToKeycloak() {
-        authService.logout(new LogoutRequest("refresh-token"));
+    void delegatesLogoutToKeycloakForAuthenticatedUser() {
+        UUID userId = UUID.randomUUID();
 
-        verify(keycloakTokenService).logout("refresh-token");
+        authService.logout(userId);
+
+        verify(keycloakIdentityService).logoutUser(userId);
     }
 }

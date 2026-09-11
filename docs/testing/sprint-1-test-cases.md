@@ -1,19 +1,20 @@
 # Casos de prueba manuales — Sprint 1
 
-| ID | Funcionalidad | Escenario | Datos / acción | Resultado esperado | Estado |
+| ID | Funcionalidad | Escenario | Resultado esperado | Suite | Estado |
 |---|---|---|---|---|---|
-| CP-01 | Registro | Registro válido | Enviar datos válidos a `POST /api/auth/register` | HTTP 201; devuelve usuario, access token, refresh token, CVU de 22 dígitos y alias de tres palabras | Ejecutado OK |
-| CP-02 | Registro | Email duplicado | Registrar un email ya existente | HTTP 409; mensaje indicando que el usuario ya existe | Pendiente |
-| CP-03 | Registro | DNI duplicado | Registrar un DNI ya existente con otro email | HTTP 409; mensaje de conflicto | Pendiente |
-| CP-04 | Registro | Datos inválidos | Enviar email inválido, contraseña corta o campos vacíos | HTTP 400; detalle de validación | Pendiente |
-| CP-05 | Login | Credenciales válidas | Enviar email y contraseña correctos a `POST /api/auth/login` | HTTP 200; devuelve access token y refresh token | Ejecutado OK |
-| CP-06 | Login | Contraseña inválida | Enviar email válido con contraseña incorrecta | HTTP 401; mensaje “Credenciales inválidas” | Pendiente |
-| CP-07 | Seguridad | Acceso sin token | Consultar perfil o cuenta sin encabezado Authorization | HTTP 401 | Ejecutado OK |
-| CP-08 | Seguridad | Acceso con token propio | Consultar perfil y cuenta mediante token Bearer del usuario | HTTP 200; devuelve únicamente sus datos | Ejecutado OK |
-| CP-09 | Cuenta | Formato de CVU | Revisar el CVU obtenido después de registrar | Exactamente 22 caracteres numéricos | Ejecutado OK |
-| CP-10 | Cuenta | Formato de alias | Revisar el alias obtenido después de registrar | Tres palabras separadas por puntos | Ejecutado OK |
-| CP-11 | Logout | Cierre de sesión válido | Enviar refresh token a `POST /api/auth/logout` | HTTP 200 | Ejecutado OK |
-| CP-12 | Logout | Refresh token invalidado | Solicitar token a Keycloak con el refresh token luego del logout | HTTP 400; Keycloak rechaza el token | Ejecutado OK |
+| CP-01 | Registro | Registro válido | HTTP 201; usuario sin contraseña, tokens, CVU de 22 dígitos y alias de tres palabras | Smoke y Regression | Ejecutado OK |
+| CP-02 | Registro | Email duplicado | HTTP 409; mensaje indicando que el usuario ya existe | Regression | Ejecutado OK |
+| CP-03 | Registro | DNI duplicado | HTTP 409; mensaje de conflicto | Regression | Ejecutado OK |
+| CP-04 | Registro | Datos inválidos | HTTP 400; detalle de validación | Regression | Ejecutado OK |
+| CP-05 | Login | Credenciales válidas | HTTP 200; access token y refresh token | Smoke y Regression | Ejecutado OK |
+| CP-06 | Login | Contraseña incorrecta | HTTP 400; mensaje “Contraseña incorrecta” | Regression | Ejecutado OK |
+| CP-07 | Seguridad | Acceso sin token | HTTP 401 | Regression | Ejecutado OK |
+| CP-08 | Seguridad | Acceso con token propio | HTTP 200; devuelve únicamente sus datos | Smoke y Regression | Ejecutado OK |
+| CP-09 | Cuenta | Formato de CVU | Exactamente 22 caracteres numéricos | Regression | Ejecutado OK |
+| CP-10 | Cuenta | Formato de alias | Tres palabras separadas por puntos y obtenidas de TXT | Regression | Ejecutado OK |
+| CP-11 | Logout | Cierre de sesión con Bearer token | HTTP 200 | Smoke y Regression | Ejecutado OK |
+| CP-12 | Logout | Refresh token invalidado | HTTP 400; Keycloak rechaza el token | Regression | Ejecutado OK |
+| CP-13 | Sesión | Persistencia al recargar | Iniciar sesión y presionar F5 en una ruta protegida | La sesión continúa activa y el perfil se recupera con Bearer token | Smoke y Regression | Ejecutado OK |
 
 ## Datos de prueba sugeridos
 
@@ -36,3 +37,14 @@ Durante las pruebas se debe observar especialmente:
 - Si el Gateway puede enrutar correctamente las solicitudes.
 - Si el token permite acceder únicamente a recursos del propietario.
 - Si los mensajes y códigos de error son coherentes.
+
+## Ejecución de suites
+
+| Suite | Casos ejecutados | Resultado |
+|---|---|---|
+| Smoke | CP-01, CP-05, CP-08, CP-11 | Aprobada |
+| Regression | CP-01 a CP-12 | Aprobada |
+
+## Resultado final
+
+Se ejecutaron 12 casos de prueba manuales. No se identificaron defectos bloqueantes. Las suites Smoke y Regression finalizaron aprobadas.

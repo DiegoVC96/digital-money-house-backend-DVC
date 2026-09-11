@@ -13,6 +13,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.security.core.Authentication;
 import java.util.UUID;
+import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -61,4 +65,41 @@ public class AuthController {
 
         return ResponseEntity.ok().build();
     }
+
+    @PostMapping("/password-recovery/request")
+public ResponseEntity<Void> requestPasswordRecovery(
+    @Valid @RequestBody PasswordRecoveryRequest request
+) {
+    authService.requestPasswordRecovery(request);
+    return ResponseEntity.ok().build();
+}
+
+@PostMapping("/password-recovery/confirm")
+public ResponseEntity<Void> confirmPasswordRecovery(
+    @Valid @RequestBody PasswordRecoveryConfirmRequest request
+) {
+    authService.confirmPasswordRecovery(request);
+    return ResponseEntity.ok().build();
+}
+
+@PostMapping("/email-verification/request")
+public ResponseEntity<Void> requestEmailVerification(
+    JwtAuthenticationToken authentication
+) {
+    String email = authentication.getToken().getClaimAsString("email");
+    authService.requestEmailVerification(email);
+
+    return ResponseEntity.ok().build();
+}
+
+@PostMapping("/email-verification/confirm")
+public ResponseEntity<Void> confirmEmailVerification(
+    @Valid @RequestBody EmailVerificationConfirmRequest request,
+    JwtAuthenticationToken authentication
+) {
+    String email = authentication.getToken().getClaimAsString("email");
+    authService.confirmEmailVerification(email, request);
+
+    return ResponseEntity.ok().build();
+}
 }

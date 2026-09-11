@@ -6,11 +6,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.Instant;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiError> handleNotFound(
@@ -53,9 +57,27 @@ public class GlobalExceptionHandler {
         Exception exception,
         HttpServletRequest request
     ) {
+        log.error(
+            "Error inesperado al procesar {}",
+            request.getRequestURI(),
+            exception
+        );
+
         return error(
             HttpStatus.INTERNAL_SERVER_ERROR,
             "Ocurrió un error inesperado",
+            request
+        );
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity<ApiError> handleUnauthorized(
+        UnauthorizedException exception,
+        HttpServletRequest request
+    ) {
+        return error(
+            HttpStatus.UNAUTHORIZED,
+            exception.getMessage(),
             request
         );
     }

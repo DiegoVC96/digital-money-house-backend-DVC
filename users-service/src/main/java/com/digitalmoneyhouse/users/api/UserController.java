@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
 
@@ -38,12 +40,21 @@ public class UserController {
             .body(response);
     }
 
+    @GetMapping("/internal/availability")
+    @PreAuthorize("hasRole('SERVICE')")
+        public AvailabilityResponse checkAvailability(
+            @RequestParam String email,
+            @RequestParam String dni
+        ) {
+        return userService.checkAvailability(email, dni);
+    }
+
     @GetMapping("/{id}")
     @PreAuthorize("""
         #id.toString() == authentication.name
         or hasRole('ADMIN')
     """)
-    public UserResponse getById(@PathVariable UUID id) {
+    public UserResponse getById(@PathVariable("id") UUID id) {
         return userService.getById(id);
     }
 }

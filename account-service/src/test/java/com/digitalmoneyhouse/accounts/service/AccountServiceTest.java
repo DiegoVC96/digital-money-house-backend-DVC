@@ -48,7 +48,7 @@ class AccountServiceTest {
 
         assertEquals(userId, response.userId());
         assertTrue(response.cvu().matches("\\d{22}"));
-        assertTrue(response.alias().contains(".dmh."));
+        assertEquals(3, response.alias().split("\\.").length);
         assertEquals(0, response.balance().compareTo(BigDecimal.ZERO));
 
         verify(accountRepository).save(ArgumentMatchers.any(Account.class));

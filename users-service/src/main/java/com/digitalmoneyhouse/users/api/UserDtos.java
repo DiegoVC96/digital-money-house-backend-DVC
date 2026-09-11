@@ -49,4 +49,10 @@ public final class UserDtos {
         Set<String> roles
     ) {
     }
+
+    public record AvailabilityResponse(
+        boolean emailExists,
+        boolean dniExists
+    ) {
+    }
 }

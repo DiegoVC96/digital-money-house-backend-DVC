@@ -8,6 +8,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.digitalmoneyhouse.auth.domain.VerificationPurpose;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -33,6 +36,9 @@ class AuthServiceTest {
 
     @Mock
     private AccountsClient accountsClient;
+
+    @Mock
+    private VerificationCodeService verificationCodeService;
 
     @InjectMocks
     private AuthService authService;
@@ -110,7 +116,53 @@ class AuthServiceTest {
 
         verify(usersClient).create(any());
         verify(accountsClient).create(any());
+        verify(verificationCodeService).issueCode(
+            "lucia@example.com",
+            VerificationPurpose.EMAIL_VERIFICATION
+        );
     }
+
+    @Test
+void sendsPasswordResetCodeWhenEmailExists() {
+    when(usersClient.checkAvailability(
+        "lucia@example.com",
+        "00000000"
+    )).thenReturn(
+        new UsersClient.AvailabilityResponse(true, false)
+    );
+
+    authService.requestPasswordRecovery(
+        new PasswordRecoveryRequest("lucia@example.com")
+    );
+
+    verify(verificationCodeService).issueCode(
+        "lucia@example.com",
+        VerificationPurpose.PASSWORD_RESET
+    );
+}
+
+@Test
+void verifiesCodeAndResetsPassword() {
+    PasswordRecoveryConfirmRequest request =
+        new PasswordRecoveryConfirmRequest(
+            "lucia@example.com",
+            "123456",
+            "NuevaClaveSegura123"
+        );
+
+    authService.confirmPasswordRecovery(request);
+
+    verify(verificationCodeService).verifyCode(
+        "lucia@example.com",
+        "123456",
+        VerificationPurpose.PASSWORD_RESET
+    );
+
+    verify(keycloakIdentityService).resetPassword(
+        "lucia@example.com",
+        "NuevaClaveSegura123"
+    );
+}
 
     @Test
     void delegatesLogoutToKeycloakForAuthenticatedUser() {

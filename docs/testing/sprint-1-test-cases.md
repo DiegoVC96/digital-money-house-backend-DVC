@@ -15,6 +15,10 @@
 | CP-11 | Logout | Cierre de sesión con Bearer token | HTTP 200 | Smoke y Regression | Ejecutado OK |
 | CP-12 | Logout | Refresh token invalidado | HTTP 400; Keycloak rechaza el token | Regression | Ejecutado OK |
 | CP-13 | Sesión | Persistencia al recargar | Iniciar sesión y presionar F5 en una ruta protegida | La sesión continúa activa y el perfil se recupera con Bearer token | Smoke y Regression | Ejecutado OK |
+| CP-14 | Recuperación | Solicitud con email existente | HTTP 200 y envío de código de seis dígitos a MailHog | Smoke y Regression | Ejecutado OK |
+| CP-15 | Recuperación | Confirmación con código válido | HTTP 200; contraseña anterior rechazada y contraseña nueva aceptada | Smoke y Regression | Ejecutado OK |
+| CP-16 | Verificación email | Solicitud autenticada de código | HTTP 200 y envío de código de seis dígitos a MailHog | Regression | Ejecutado OK |
+| CP-17 | Verificación email | Confirmación con código válido | HTTP 200; `Email verified` activado en Keycloak | Smoke y Regression | Ejecutado OK |
 
 ## Datos de prueba sugeridos
 
@@ -47,4 +51,4 @@ Durante las pruebas se debe observar especialmente:
 
 ## Resultado final
 
-Se ejecutaron 12 casos de prueba manuales. No se identificaron defectos bloqueantes. Las suites Smoke y Regression finalizaron aprobadas.
+Se ejecutaron 17 casos de prueba manuales. No se identificaron defectos bloqueantes. Las suites Smoke y Regression finalizaron aprobadas.

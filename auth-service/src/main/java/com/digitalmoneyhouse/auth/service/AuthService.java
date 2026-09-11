@@ -10,6 +10,10 @@ import com.digitalmoneyhouse.auth.client.UsersClient;
 import org.springframework.stereotype.Service;
 import com.digitalmoneyhouse.common.exception.ConflictException;
 import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
+import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
+import com.digitalmoneyhouse.auth.domain.VerificationPurpose;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -21,17 +25,20 @@ public class AuthService {
     private final KeycloakTokenService keycloakTokenService;
     private final UsersClient usersClient;
     private final AccountsClient accountsClient;
+    private final VerificationCodeService verificationCodeService;
 
     public AuthService(
         KeycloakIdentityService keycloakIdentityService,
         KeycloakTokenService keycloakTokenService,
         UsersClient usersClient,
-        AccountsClient accountsClient
+        AccountsClient accountsClient,
+        VerificationCodeService verificationCodeService
     ) {
         this.keycloakIdentityService = keycloakIdentityService;
         this.keycloakTokenService = keycloakTokenService;
         this.usersClient = usersClient;
         this.accountsClient = accountsClient;
+        this.verificationCodeService = verificationCodeService;
     }
 
     public AuthResponse register(RegisterRequest request) {
@@ -70,6 +77,11 @@ public class AuthService {
             )
         );
 
+        verificationCodeService.issueCode(
+            email,
+            VerificationPurpose.EMAIL_VERIFICATION
+        );
+
         KeycloakTokenService.UserToken token =
             keycloakTokenService.login(email, request.password());
 
@@ -93,6 +105,59 @@ public class AuthService {
             )
         );
     }
+
+    public void requestPasswordRecovery(
+    PasswordRecoveryRequest request
+) {
+    String email = request.email().toLowerCase(Locale.ROOT);
+
+    UsersClient.AvailabilityResponse availability =
+        usersClient.checkAvailability(email, "00000000");
+
+    if (availability.emailExists()) {
+        verificationCodeService.issueCode(
+            email,
+            VerificationPurpose.PASSWORD_RESET
+        );
+    }
+}
+
+public void confirmPasswordRecovery(
+    PasswordRecoveryConfirmRequest request
+) {
+    String email = request.email().toLowerCase(Locale.ROOT);
+
+    verificationCodeService.verifyCode(
+        email,
+        request.code(),
+        VerificationPurpose.PASSWORD_RESET
+    );
+
+    keycloakIdentityService.resetPassword(
+        email,
+        request.newPassword()
+    );
+}
+
+public void requestEmailVerification(String email) {
+    verificationCodeService.issueCode(
+        email,
+        VerificationPurpose.EMAIL_VERIFICATION
+    );
+}
+
+public void confirmEmailVerification(
+    String email,
+    EmailVerificationConfirmRequest request
+) {
+    verificationCodeService.verifyCode(
+        email,
+        request.code(),
+        VerificationPurpose.EMAIL_VERIFICATION
+    );
+
+    keycloakIdentityService.markEmailAsVerified(email);
+}
 
     public void logout(UUID userId) {
         keycloakIdentityService.logoutUser(userId);

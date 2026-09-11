@@ -14,6 +14,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.math.BigDecimal;
 import java.util.Optional;
 import java.util.UUID;
+import java.security.SecureRandom;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -38,6 +39,10 @@ class AccountServiceTest {
             "Ana Pérez"
         );
 
+        when(aliasWordsProvider.randomWord(
+            ArgumentMatchers.any(SecureRandom.class)
+        )).thenReturn("sol", "luna", "rio");
+
         when(accountRepository.findByUserId(userId))
             .thenReturn(Optional.empty());
 
@@ -48,7 +53,7 @@ class AccountServiceTest {
 
         assertEquals(userId, response.userId());
         assertTrue(response.cvu().matches("\\d{22}"));
-        assertEquals(3, response.alias().split("\\.").length);
+        assertEquals("sol.luna.rio", response.alias());
         assertEquals(0, response.balance().compareTo(BigDecimal.ZERO));
 
         verify(accountRepository).save(ArgumentMatchers.any(Account.class));
@@ -81,4 +86,7 @@ class AccountServiceTest {
         verify(accountRepository, never())
             .save(ArgumentMatchers.any(Account.class));
     }
+
+    @Mock
+    private AliasWordsProvider aliasWordsProvider;
 }

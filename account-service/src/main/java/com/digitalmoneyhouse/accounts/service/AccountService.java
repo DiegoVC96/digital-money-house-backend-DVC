@@ -18,10 +18,15 @@ import java.util.UUID;
 public class AccountService {
 
     private final AccountRepository accountRepository;
+    private final AliasWordsProvider aliasWordsProvider;
     private final SecureRandom secureRandom = new SecureRandom();
 
-    public AccountService(AccountRepository accountRepository) {
+    public AccountService(
+        AccountRepository accountRepository,
+        AliasWordsProvider aliasWordsProvider
+    ) {
         this.accountRepository = accountRepository;
+        this.aliasWordsProvider = aliasWordsProvider;
     }
 
     public AccountResponse create(CreateAccountRequest request) {
@@ -68,17 +73,15 @@ public class AccountService {
     }
 
     private String generateUniqueAlias() {
-        String[] words = {
-            "sol", "luna", "rio", "bosque", "nube", "mar",
-            "campo", "fuego", "viento", "roble", "pampa", "cielo"
-        };
-
         String alias;
 
         do {
-            alias = words[secureRandom.nextInt(words.length)]
-                + "." + words[secureRandom.nextInt(words.length)]
-                + "." + words[secureRandom.nextInt(words.length)];
+            alias = String.join(
+                ".",
+                aliasWordsProvider.randomWord(secureRandom),
+                aliasWordsProvider.randomWord(secureRandom),
+                aliasWordsProvider.randomWord(secureRandom)
+            );
         } while (accountRepository.existsByAlias(alias));
 
         return alias;

@@ -51,22 +51,19 @@ public final class AuthDtos {
     }
 
     public record RegisteredUser(
-    UUID id,
-    String firstName,
-    String lastName,
-    String email,
-    Set<String> roles
+        UUID id,
+        String firstName,
+        String lastName,
+        String phone,
+        String dni,
+        String email,
+        Set<String> roles
     ) {
     }
 
     public record AccountSummary(
         String cvu,
         String alias
-    ) {
-    }
-
-    public record LogoutRequest(
-    @NotBlank String refreshToken
     ) {
     }
 

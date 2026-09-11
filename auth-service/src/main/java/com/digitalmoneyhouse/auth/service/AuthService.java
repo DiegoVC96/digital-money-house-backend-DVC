@@ -8,8 +8,8 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.RegisteredUser;
 import com.digitalmoneyhouse.auth.client.AccountsClient;
 import com.digitalmoneyhouse.auth.client.UsersClient;
 import org.springframework.stereotype.Service;
-import com.digitalmoneyhouse.auth.api.AuthDtos.LogoutRequest;
 import com.digitalmoneyhouse.common.exception.ConflictException;
+import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -82,6 +82,8 @@ public class AuthService {
                 createdUser.id(),
                 createdUser.firstName(),
                 createdUser.lastName(),
+                createdUser.phone(),
+                createdUser.dni(),
                 createdUser.email(),
                 createdUser.roles()
             ),
@@ -92,16 +94,22 @@ public class AuthService {
         );
     }
 
-    public void logout(LogoutRequest request) {
-    keycloakTokenService.logout(request.refreshToken());
+    public void logout(UUID userId) {
+        keycloakIdentityService.logoutUser(userId);
     }
 
     public AuthResponse login(LoginRequest request) {
+        String email = request.email().toLowerCase(Locale.ROOT);
+
+        UsersClient.AvailabilityResponse availability =
+            usersClient.checkAvailability(email, "00000000");
+
+        if (!availability.emailExists()) {
+            throw new ResourceNotFoundException("Usuario inexistente");
+        }
+
         KeycloakTokenService.UserToken token =
-            keycloakTokenService.login(
-                request.email(),
-                request.password()
-            );
+            keycloakTokenService.login(email, request.password());
 
         return toResponse(token, null);
     }

@@ -71,3 +71,5 @@ Se probarán las siguientes funcionalidades:
 - Logout exitoso con respuesta HTTP 200.
 - Refresh token rechazado con HTTP 400 después del logout.
 - Pruebas unitarias exitosas en Users Service, Account Service y Auth Service.
+- Persistencia de sesión validada en FrontEnd después de recargar una ruta protegida.
+- Logout desde FrontEnd validado: se elimina el token local y se invalida la sesión en Keycloak.

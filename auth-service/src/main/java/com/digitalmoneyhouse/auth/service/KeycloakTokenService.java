@@ -8,6 +8,7 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
+import com.digitalmoneyhouse.common.exception.InvalidCredentialsException;
 
 import java.util.Map;
 
@@ -91,7 +92,7 @@ public class KeycloakTokenService {
                 tokenType == null ? "Bearer" : tokenType.toString()
             );
         } catch (RestClientResponseException exception) {
-            throw new UnauthorizedException("Credenciales inválidas");
+            throw new InvalidCredentialsException("Contraseña incorrecta");
         }
     }
 

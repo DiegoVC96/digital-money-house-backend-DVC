@@ -1,0 +1,120 @@
+package com.digitalmoneyhouse.auth.service;
+
+import com.digitalmoneyhouse.auth.api.AuthDtos.LogoutRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.RegisterRequest;
+import com.digitalmoneyhouse.auth.client.AccountsClient;
+import com.digitalmoneyhouse.auth.client.UsersClient;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.math.BigDecimal;
+import java.util.Set;
+import java.util.UUID;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class AuthServiceTest {
+
+    @Mock
+    private KeycloakIdentityService keycloakIdentityService;
+
+    @Mock
+    private KeycloakTokenService keycloakTokenService;
+
+    @Mock
+    private UsersClient usersClient;
+
+    @Mock
+    private AccountsClient accountsClient;
+
+    @InjectMocks
+    private AuthService authService;
+
+    @Test
+    void registersUserCreatesAccountAndReturnsTokens() {
+        UUID userId = UUID.randomUUID();
+
+        RegisterRequest request = new RegisterRequest(
+            "Lucia",
+            "Gomez",
+            "1198765432",
+            "34567890",
+            "lucia@example.com",
+            "ClaveSegura123"
+        );
+
+        when(usersClient.checkAvailability(
+            "lucia@example.com",
+            "34567890"
+        )).thenReturn(
+            new UsersClient.AvailabilityResponse(false, false)
+        );
+
+        when(keycloakIdentityService.createUser(
+            "lucia@example.com",
+            "ClaveSegura123",
+            "Lucia",
+            "Gomez"
+        )).thenReturn(userId);
+
+        when(usersClient.create(any())).thenReturn(
+            new UsersClient.UserResponse(
+                userId,
+                "Lucia",
+                "Gomez",
+                "1198765432",
+                "34567890",
+                "lucia@example.com",
+                Set.of("USER")
+            )
+        );
+
+        when(accountsClient.create(any())).thenReturn(
+            new AccountsClient.AccountResponse(
+                UUID.randomUUID(),
+                userId,
+                "1234567890123456789012",
+                "sol.luna.rio",
+                BigDecimal.ZERO,
+                "Lucia Gomez"
+            )
+        );
+
+        when(keycloakTokenService.login(
+            "lucia@example.com",
+            "ClaveSegura123"
+        )).thenReturn(
+            new KeycloakTokenService.UserToken(
+                "access-token",
+                "refresh-token",
+                "Bearer"
+            )
+        );
+
+        var response = authService.register(request);
+
+        assertEquals(userId, response.userId());
+        assertEquals("lucia@example.com", response.user().email());
+        assertEquals("sol.luna.rio", response.account().alias());
+        assertEquals("1234567890123456789012", response.account().cvu());
+        assertNotNull(response.accessToken());
+
+        verify(usersClient).create(any());
+        verify(accountsClient).create(any());
+    }
+
+    @Test
+    void delegatesLogoutToKeycloak() {
+        authService.logout(new LogoutRequest("refresh-token"));
+
+        verify(keycloakTokenService).logout("refresh-token");
+    }
+}

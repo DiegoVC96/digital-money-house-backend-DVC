@@ -10,6 +10,7 @@ import com.digitalmoneyhouse.users.repository.RoleRepository;
 import com.digitalmoneyhouse.users.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
 
 import java.util.Locale;
 import java.util.Set;
@@ -58,6 +59,17 @@ public class UserService {
         );
 
         return toResponse(userRepository.save(user));
+    }
+
+    @Transactional(readOnly = true)
+    public AvailabilityResponse checkAvailability(
+        String email,
+        String dni
+    ) {
+        return new AvailabilityResponse(
+            userRepository.findByEmailIgnoreCase(email).isPresent(),
+            userRepository.existsByDni(dni)
+        );
     }
 
     @Transactional(readOnly = true)

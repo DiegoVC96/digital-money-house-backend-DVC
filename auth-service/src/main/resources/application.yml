@@ -1,0 +1,22 @@
+spring:
+  application:
+    name: auth-service
+
+server:
+  port: 8081
+
+eureka:
+  instance:
+    hostname: localhost
+    instance-id: ${spring.application.name}:${server.port}
+
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+keycloak:
+  base-url: http://localhost:8180
+  realm: digital-money-house
+  service-client-id: auth-service
+  service-client-secret: ${KEYCLOAK_AUTH_SERVICE_SECRET}
+  public-client-id: digital-money-house-web

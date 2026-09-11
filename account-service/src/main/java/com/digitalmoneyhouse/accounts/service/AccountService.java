@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.security.SecureRandom;
-import java.text.Normalizer;
-import java.util.Locale;
 import java.util.UUID;
 
 @Service
@@ -36,7 +34,7 @@ public class AccountService {
         Account account = new Account(
             request.userId(),
             generateUniqueCvu(),
-            generateUniqueAlias(request.holderName()),
+            generateUniqueAlias(),
             request.holderName()
         );
 
@@ -69,27 +67,18 @@ public class AccountService {
         return cvu;
     }
 
-    private String generateUniqueAlias(String holderName) {
-        String base = Normalizer
-            .normalize(holderName, Normalizer.Form.NFD)
-            .replaceAll("\\p{M}", "")
-            .replaceAll("[^a-zA-Z]", "")
-            .toLowerCase(Locale.ROOT);
-
-        if (base.isBlank()) {
-            base = "cuenta";
-        }
-
-        base = base.substring(0, Math.min(base.length(), 25));
+    private String generateUniqueAlias() {
+        String[] words = {
+            "sol", "luna", "rio", "bosque", "nube", "mar",
+            "campo", "fuego", "viento", "roble", "pampa", "cielo"
+        };
 
         String alias;
 
         do {
-            String suffix = UUID.randomUUID()
-                .toString()
-                .substring(0, 6);
-
-            alias = base + ".dmh." + suffix;
+            alias = words[secureRandom.nextInt(words.length)]
+                + "." + words[secureRandom.nextInt(words.length)]
+                + "." + words[secureRandom.nextInt(words.length)];
         } while (accountRepository.existsByAlias(alias));
 
         return alias;

@@ -1,12 +1,14 @@
-package com.digitalmoneyhouse.accounts;
+package com.digitalmoneyhouse.auth;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 
 @SpringBootApplication(scanBasePackages = "com.digitalmoneyhouse")
-public class AccountServiceApplication {
+@EnableFeignClients
+public class AuthServiceApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(AccountServiceApplication.class, args);
+        SpringApplication.run(AuthServiceApplication.class, args);
     }
 }

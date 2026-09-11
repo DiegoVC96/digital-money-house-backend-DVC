@@ -43,7 +43,9 @@ public class AccountController {
         #userId.toString() == authentication.name
         or hasRole('ADMIN')
     """)
-    public AccountResponse getByUserId(@PathVariable UUID userId) {
+    public AccountResponse getByUserId(
+    @PathVariable("userId") UUID userId
+    ) {
         return accountService.getByUserId(userId);
     }
 }

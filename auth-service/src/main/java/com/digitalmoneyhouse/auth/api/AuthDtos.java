@@ -50,6 +50,35 @@ public final class AuthDtos {
     ) {
     }
 
+    public record PasswordRecoveryRequest(
+    @NotBlank
+    @Email
+    String email
+) {
+}
+
+public record PasswordRecoveryConfirmRequest(
+    @NotBlank
+    @Email
+    String email,
+
+    @NotBlank
+    @Pattern(regexp = "\\d{6}")
+    String code,
+
+    @NotBlank
+    @Size(min = 8, max = 72)
+    String newPassword
+) {
+}
+
+public record EmailVerificationConfirmRequest(
+    @NotBlank
+    @Pattern(regexp = "\\d{6}")
+    String code
+) {
+}
+
     public record RegisteredUser(
         UUID id,
         String firstName,

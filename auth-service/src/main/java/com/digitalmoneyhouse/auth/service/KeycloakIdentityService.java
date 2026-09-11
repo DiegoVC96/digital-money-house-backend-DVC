@@ -6,6 +6,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 
 import java.util.HashMap;
 import java.util.List;
@@ -46,7 +47,7 @@ public class KeycloakIdentityService {
         user.put("firstName", firstName);
         user.put("lastName", lastName);
         user.put("enabled", true);
-        user.put("emailVerified", true);
+        user.put("emailVerified", false);
         user.put(
             "credentials",
             List.of(
@@ -94,6 +95,67 @@ public class KeycloakIdentityService {
 
         return userId;
     }
+
+    public void markEmailAsVerified(String email) {
+    String token = tokenService.getServiceAccessToken();
+    UUID userId = findUserIdByEmail(email, token);
+
+    restClient.put()
+        .uri(baseUrl + "/admin/realms/" + realm
+            + "/users/" + userId)
+        .headers(headers -> headers.setBearerAuth(token))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(Map.of("emailVerified", true))
+        .retrieve()
+        .toBodilessEntity();
+    }
+
+public void resetPassword(
+    String email,
+    String newPassword
+) {
+    String token = tokenService.getServiceAccessToken();
+    UUID userId = findUserIdByEmail(email, token);
+
+    restClient.put()
+        .uri(baseUrl + "/admin/realms/" + realm
+            + "/users/" + userId + "/reset-password")
+        .headers(headers -> headers.setBearerAuth(token))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(
+            Map.of(
+                "type", "password",
+                "value", newPassword,
+                "temporary", false
+            )
+        )
+        .retrieve()
+        .toBodilessEntity();
+}
+
+private UUID findUserIdByEmail(
+    String email,
+    String token
+) {
+    List<?> users = restClient.get()
+        .uri(
+            baseUrl + "/admin/realms/" + realm
+                + "/users?email={email}&exact=true",
+            email
+        )
+        .headers(headers -> headers.setBearerAuth(token))
+        .retrieve()
+        .body(List.class);
+
+    if (users == null || users.isEmpty()) {
+        throw new ResourceNotFoundException("Usuario inexistente");
+    }
+
+    Map<?, ?> user = (Map<?, ?>) users.get(0);
+    Object id = user.get("id");
+
+    return UUID.fromString(id.toString());
+}
 
     public void logoutUser(UUID userId) {
         String token = tokenService.getServiceAccessToken();

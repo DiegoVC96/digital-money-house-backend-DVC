@@ -28,6 +28,18 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InvalidVerificationCodeException.class)
+    public ResponseEntity<ApiError> invalidVerificationCode(
+        InvalidVerificationCodeException exception,
+        HttpServletRequest request
+    ) {
+        return error(
+            HttpStatus.BAD_REQUEST,
+            exception.getMessage(),
+            request
+        );
+    }
+
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiError> handleConflict(
         ConflictException exception,

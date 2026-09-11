@@ -25,6 +25,26 @@ services:
     volumes:
       - mysql-accounts-data:/var/lib/mysql
 
+  mysql-auth:
+    image: mysql:8.4
+    container_name: dmh-mysql-auth
+    environment:
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: dmh_password
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql-auth-data:/var/lib/mysql
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+    container_name: dmh-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
   keycloak:
     image: quay.io/keycloak/keycloak:26.0
     container_name: dmh-keycloak
@@ -38,3 +58,4 @@ services:
 volumes:
   mysql-users-data:
   mysql-accounts-data:
+  mysql-auth-data:

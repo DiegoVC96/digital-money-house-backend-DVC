@@ -550,9 +550,24 @@
     "webAuthnPolicyPasswordlessExtraOrigins":  [
 
                                                ],
-    "users":  [
-
-              ],
+    "users": [
+        {
+            "username": "service-account-auth-service",
+            "enabled": true,
+            "serviceAccountClientId": "auth-service",
+            "realmRoles": [
+                "SERVICE"
+            ],
+            "clientRoles": {
+                "realm-management": [
+                    "manage-users",
+                    "view-users",
+                    "query-users",
+                    "view-realm"
+                ]
+            }
+        }
+    ],
     "clientScopeMappings":  {
                                 "account":  [
                                                 {
@@ -741,7 +756,6 @@
                         "enabled":  true,
                         "alwaysDisplayInConsole":  false,
                         "clientAuthenticatorType":  "client-secret",
-                        "secret":  "**********",
                         "redirectUris":  [
                                              "/*"
                                          ],

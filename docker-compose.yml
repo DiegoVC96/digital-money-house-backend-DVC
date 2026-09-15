@@ -50,12 +50,28 @@ services:
     container_name: dmh-keycloak
     command: start-dev --import-realm
     environment:
-      KC_BOOTSTRAP_ADMIN_USERNAME: admin
-      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}"
+      KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}"
+      KEYCLOAK_AUTH_SERVICE_SECRET: "${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}"
     ports:
       - "8180:8080"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: dmh-keycloak-bootstrap
+    depends_on:
+      - keycloak
+    entrypoint: ["/bin/sh", "/opt/keycloak/bootstrap/init.sh"]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: digital-money-house
+      KEYCLOAK_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}"
+      KEYCLOAK_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}"
+      KEYCLOAK_AUTH_SERVICE_SECRET: "${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}"
+    volumes:
+      - ./keycloak/bootstrap:/opt/keycloak/bootstrap:ro
+    restart: "no"
 
 volumes:
   mysql-users-data:

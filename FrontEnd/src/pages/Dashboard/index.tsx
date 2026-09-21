@@ -14,7 +14,7 @@ import {
 } from '../../components';
 import {
   formatCurrency,
-  getUserActivities,
+  getRecentTransactions,
   parseRecordContent,
   getAccount,
   sortByDate,
@@ -44,7 +44,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (user && user.id) {
-      getUserActivities(user.id, token)
+      getRecentTransactions(user.id, token, numberOfActivities)
         .then((activities) => {
           if ((activities as Transaction[]).length > 0) {
             const orderedActivities = sortByDate(activities);

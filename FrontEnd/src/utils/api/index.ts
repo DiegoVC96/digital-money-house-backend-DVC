@@ -1,4 +1,4 @@
-import { UserAccount, User, Transaction, Card } from '../../types';
+import { UserAccount, User, Transaction, Card, TransactionType } from '../../types';
 
 const myInit = (method = 'GET', token?: string) => {
   return {
@@ -115,6 +115,45 @@ export const getAccount = (
         name: account.holderName,
       }));
     })
+    .catch((err) => {
+      console.log(err);
+      return rejectPromise(err);
+    });
+};
+
+export const getRecentTransactions = (
+  userId: string,
+  token: string,
+  limit = 5
+): Promise<Transaction[]> => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(
+          `${baseUrl}/accounts/${account.id}/transactions?limit=${limit}`,
+          'GET',
+          token
+        )
+      )
+    )
+    .then((response) =>
+      response.ok ? response.json() : rejectPromise(response)
+    )
+    .then((transactions) =>
+      transactions.map((transaction: any): Transaction => ({
+        id: transaction.id,
+        amount:
+          transaction.type === 'TRANSFER_OUT'
+            ? -transaction.amount
+            : transaction.amount,
+        name: transaction.description,
+        dated: transaction.createdAt,
+        type:
+          transaction.type === 'DEPOSIT'
+            ? TransactionType.Deposit
+            : TransactionType.Transfer,
+      }))
+    )
     .catch((err) => {
       console.log(err);
       return rejectPromise(err);

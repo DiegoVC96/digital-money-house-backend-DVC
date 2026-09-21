@@ -13,9 +13,16 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.TransactionResponse;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.UUID;
+import java.util.List;
 
+@Validated
 @RestController
 @RequestMapping("/api/accounts")
 public class AccountController {
@@ -47,5 +54,23 @@ public class AccountController {
     @PathVariable("userId") UUID userId
     ) {
         return accountService.getByUserId(userId);
+    }
+
+    @GetMapping("/{accountId}")
+    @PreAuthorize("isAuthenticated()")
+    public AccountResponse getById(
+        @PathVariable("accountId") UUID accountId
+    ) {
+        return accountService.getById(accountId);
+    }
+
+    @GetMapping("/{accountId}/transactions")
+    @PreAuthorize("isAuthenticated()")
+    public List<TransactionResponse> getRecentTransactions(
+        @PathVariable("accountId") UUID accountId,
+        @RequestParam(defaultValue = "5")
+        @Min(1) @Max(5) int limit
+    ) {
+        return accountService.getRecentTransactions(accountId, limit);
     }
 }

@@ -31,33 +31,33 @@ const UserInfoProvider = ({ children }: { children: React.ReactNode }) => {
   const { isAuthenticated, setIsAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      const token = window.localStorage.getItem('token');
-      if (token) {
-        const info = parseJwt(token);
-        const userId = info && info.sub;
-        userId &&
-          getUser(userId, token)
-            .then((res) => {
-              dispatch({ type: userActionTypes.SET_USER, payload: res });
-              dispatch({
-                type: userActionTypes.SET_USER_LOADING,
-                payload: false,
-              });
-            })
-            .catch((error) => {
-              if (error.status === UNAUTHORIZED) {
-                setToken(null);
-                setIsAuthenticated(false);
-              }
-              // eslint-disable-next-line no-console
-              console.log(error);
-            });
-      } else {
-        setIsAuthenticated(false);
-      }
+  if (isAuthenticated && token) {
+    const info = parseJwt(token);
+    const userId = info && info.sub;
+
+    if (userId) {
+      getUser(userId, token)
+        .then((res) => {
+          dispatch({ type: userActionTypes.SET_USER, payload: res });
+          dispatch({
+            type: userActionTypes.SET_USER_LOADING,
+            payload: false,
+          });
+        })
+        .catch((error) => {
+          if (error.status === UNAUTHORIZED) {
+            setToken(null);
+            setIsAuthenticated(false);
+          }
+
+          // eslint-disable-next-line no-console
+          console.log(error);
+        });
     }
-  }, [dispatch, isAuthenticated, setIsAuthenticated, setToken, token]);
+  } else if (isAuthenticated) {
+    setIsAuthenticated(false);
+  }
+}, [dispatch, isAuthenticated, setIsAuthenticated, setToken, token]);
 
   return React.createElement(
     userInfoContext.Provider,

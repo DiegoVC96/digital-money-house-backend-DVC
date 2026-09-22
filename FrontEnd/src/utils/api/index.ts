@@ -1,4 +1,4 @@
-import { UserAccount, User, Transaction, Card, TransactionType } from '../../types';
+import { UserAccount, User, Transaction, TransactionType } from '../../types';
 
 const myInit = (method = 'GET', token?: string) => {
   return {
@@ -249,31 +249,40 @@ export const getUserActivity = (
     });
 };
 
-export const getUserCards = (
-  userId: string,
-  token: string
-): Promise<Card[]> => {
-  return fetch(myRequest(`${baseUrl}/users/${userId}/cards`, 'GET', token))
-    .then((response) => {
-      if (response.ok) {
-        return response.json();
-      }
-      return rejectPromise(response);
-    })
+export const getUserCards = (userId: string, token: string) => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(`${baseUrl}/accounts/${account.id}/cards`, 'GET', token)
+      )
+    )
+    .then((response) =>
+      response.ok ? response.json() : rejectPromise(response)
+    )
     .catch((err) => {
       console.log(err);
       return rejectPromise(err);
     });
 };
 
-export const getUserCard = (userId: string, cardId: string): Promise<Card> => {
-  return fetch(myRequest(`${baseUrl}/users/${userId}/cards/${cardId}`, 'GET'))
-    .then((response) => {
-      if (response.ok) {
-        return response.json();
-      }
-      return rejectPromise(response);
-    })
+export const getUserCard = (
+  userId: string,
+  cardId: string,
+  token: string
+) => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(
+          `${baseUrl}/accounts/${account.id}/cards/${cardId}`,
+          'GET',
+          token
+        )
+      )
+    )
+    .then((response) =>
+      response.ok ? response.json() : rejectPromise(response)
+    )
     .catch((err) => {
       console.log(err);
       return rejectPromise(err);
@@ -284,15 +293,21 @@ export const deleteUserCard = (
   userId: string,
   cardId: string,
   token: string
-): Promise<Response> => {
-  return fetch(
-    myRequest(`${baseUrl}/users/${userId}/cards/${cardId}`, 'DELETE', token)
-  )
+) => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(
+          `${baseUrl}/accounts/${account.id}/cards/${cardId}`,
+          'DELETE',
+          token
+        )
+      )
+    )
     .then((response) => {
-      if (response.ok) {
-        return response.json();
+      if (!response.ok) {
+        return rejectPromise(response);
       }
-      return rejectPromise(response);
     })
     .catch((err) => {
       console.log(err);
@@ -302,12 +317,23 @@ export const deleteUserCard = (
 
 export const createUserCard = (
   userId: string,
-  card: any,
+  card: {
+    number: string;
+    name: string;
+    expiration: string;
+    cvc: string;
+  },
   token: string
-): Promise<Response> => {
-  return fetch(myRequest(`${baseUrl}/users/${userId}/cards`, 'POST', token), {
-    body: JSON.stringify(card),
-  })
+) => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(`${baseUrl}/accounts/${account.id}/cards`, 'POST', token),
+        {
+          body: JSON.stringify(card),
+        }
+      )
+    )
     .then((response) =>
       response.ok ? response.json() : rejectPromise(response)
     )

@@ -20,6 +20,10 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.CardResponse;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateCardRequest;
+import com.digitalmoneyhouse.accounts.service.CardService;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import java.util.UUID;
 import java.util.List;
@@ -30,9 +34,14 @@ import java.util.List;
 public class AccountController {
 
     private final AccountService accountService;
+    private final CardService cardService;
 
-    public AccountController(AccountService accountService) {
+    public AccountController(
+        AccountService accountService,
+        CardService cardService
+    ) {
         this.accountService = accountService;
+        this.cardService = cardService;
     }
 
     @PostMapping("/internal")
@@ -83,5 +92,44 @@ public class AccountController {
         @Min(1) @Max(5) int limit
     ) {
         return accountService.getRecentTransactions(accountId, limit);
+    }
+
+    @PostMapping("/{accountId}/cards")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<CardResponse> createCard(
+        @PathVariable UUID accountId,
+        @Valid @RequestBody CreateCardRequest request
+    ) {
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(cardService.create(accountId, request));
+    }
+
+    @GetMapping("/{accountId}/cards")
+    @PreAuthorize("isAuthenticated()")
+    public List<CardResponse> getCards(
+        @PathVariable UUID accountId
+    ) {
+        return cardService.findAllByAccount(accountId);
+    }
+
+    @GetMapping("/{accountId}/cards/{cardId}")
+    @PreAuthorize("isAuthenticated()")
+    public CardResponse getCard(
+        @PathVariable UUID accountId,
+        @PathVariable UUID cardId
+    ) {
+        return cardService.findById(accountId, cardId);
+    }
+
+    @DeleteMapping("/{accountId}/cards/{cardId}")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<Void> deleteCard(
+        @PathVariable UUID accountId,
+        @PathVariable UUID cardId
+    ) {
+        cardService.delete(accountId, cardId);
+
+        return ResponseEntity.ok().build();
     }
 }

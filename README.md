@@ -161,7 +161,21 @@ Ejecutar la suite automatizada:
 mvn clean test
 ```
 
-Los casos manuales, plan de pruebas y evidencias del Sprint 1 están en `docs/testing`.
+### Smoke API del Sprint 2
+
+La prueba `AccountApiSmokeTest` usa RestAssured para validar login, token OAuth2, API Gateway y consulta de cuenta.
+
+Con los servicios activos, ejecutar:
+
+```powershell
+$env:SMOKE_BASE_URL = "http://localhost:8080"
+$env:SMOKE_EMAIL = "valentina.reproducible@example.com"
+$env:SMOKE_PASSWORD = "ClaveSegura123"
+
+mvn test -pl account-service -Dtest=AccountApiSmokeTest
+
+```md
+Los planes, casos manuales y evidencias de los Sprints 1 y 2 están en `docs/testing`.
 
 ## Seguridad
 

@@ -1,0 +1,25 @@
+image: maven:3.9.9-eclipse-temurin-21
+
+stages:
+  - test
+  - smoke
+
+unit-tests:
+  stage: test
+  script:
+    - mvn test
+  artifacts:
+    when: always
+    reports:
+      junit:
+        - "**/target/surefire-reports/TEST-*.xml"
+
+account-api-smoke:
+  stage: smoke
+  rules:
+    - if: '$SMOKE_BASE_URL && $SMOKE_EMAIL && $SMOKE_PASSWORD'
+      when: on_success
+    - when: never
+  script:
+    - mvn install -pl common -am -DskipTests
+    - mvn test -pl account-service -Dtest=AccountApiSmokeTest

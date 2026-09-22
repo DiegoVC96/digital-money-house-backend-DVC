@@ -66,4 +66,8 @@ public class Account {
     public String getHolderName() {
         return holderName;
     }
+
+    public void updateAlias(String alias) {
+        this.alias = alias;
+    }
 }

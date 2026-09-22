@@ -172,16 +172,29 @@ export const getAccounts = (): Promise<UserAccount[]> => {
 };
 
 export const updateAccount = (
-  id: string,
-  data: any,
+  userId: string,
+  data: { alias: string },
   token: string
-): Promise<Response> => {
-  return fetch(myRequest(`${baseUrl}/users/${id}/accounts/1`, 'PATCH', token), {
-    body: JSON.stringify(data),
-  })
-    .then((response) =>
-      response.ok ? response.json() : rejectPromise(response)
+): Promise<UserAccount> => {
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(`${baseUrl}/accounts/${account.id}`, 'PATCH', token),
+        {
+          body: JSON.stringify(data),
+        }
+      )
     )
+    .then((response) => {
+      if (!response.ok) {
+        return rejectPromise(response);
+      }
+
+      return response.json().then((account) => ({
+        ...account,
+        name: account.holderName,
+      }));
+    })
     .catch((err) => {
       console.log(err);
       return rejectPromise(err);

@@ -12,6 +12,7 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -91,5 +92,38 @@ class UserServiceTest {
 
         verify(userRepository, never()).save(ArgumentMatchers.any(User.class));
         verifyNoInteractions(roleRepository);
+    }
+
+    @Test
+    void updatesOnlyEditableProfileFields() {
+        UUID id = UUID.randomUUID();
+
+        User user = new User(
+            id,
+            "Ana",
+            "Pérez",
+            "1122334455",
+            "12345678",
+            "ana@example.com",
+            new Role("USER")
+        );
+
+        UpdateUserRequest request = new UpdateUserRequest(
+            "Ana María",
+            "Gómez",
+            "1198765432"
+        );
+
+        when(userRepository.findById(id))
+            .thenReturn(Optional.of(user));
+
+        var response = userService.update(id, request);
+
+        assertEquals("Ana María", response.firstName());
+        assertEquals("Gómez", response.lastName());
+        assertEquals("1198765432", response.phone());
+
+        assertEquals("ana@example.com", response.email());
+        assertEquals("12345678", response.dni());
     }
 }

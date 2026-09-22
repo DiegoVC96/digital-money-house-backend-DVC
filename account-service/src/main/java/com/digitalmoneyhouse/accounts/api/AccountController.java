@@ -18,6 +18,8 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestParam;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
 
 import java.util.UUID;
 import java.util.List;
@@ -62,6 +64,15 @@ public class AccountController {
         @PathVariable("accountId") UUID accountId
     ) {
         return accountService.getById(accountId);
+    }
+
+    @PatchMapping("/{accountId}")
+    @PreAuthorize("isAuthenticated()")
+    public AccountResponse update(
+        @PathVariable("accountId") UUID accountId,
+        @Valid @RequestBody UpdateAccountRequest request
+    ) {
+        return accountService.update(accountId, request);
     }
 
     @GetMapping("/{accountId}/transactions")

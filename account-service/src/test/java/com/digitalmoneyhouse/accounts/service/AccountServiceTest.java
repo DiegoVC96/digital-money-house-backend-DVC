@@ -20,6 +20,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
 
 import java.math.BigDecimal;
 import java.util.Optional;
@@ -186,6 +187,36 @@ void rejectsRecentTransactionsForAnotherUser() {
     );
 
     verifyNoInteractions(transactionRepository);
+}
+
+@Test
+void updatesAliasForTheAccountOwner() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+
+    authenticateAs(userId);
+
+    when(accountRepository.findById(accountId))
+        .thenReturn(Optional.of(account));
+
+    when(accountRepository.existsByAlias("cielo.mar.brisa"))
+        .thenReturn(false);
+
+    var response = accountService.update(
+        accountId,
+        new UpdateAccountRequest("cielo.mar.brisa")
+    );
+
+    assertEquals("cielo.mar.brisa", response.alias());
+    assertEquals("1234567890123456789012", response.cvu());
+    assertEquals(0, response.balance().compareTo(BigDecimal.ZERO));
 }
 
 private void authenticateAs(UUID userId) {

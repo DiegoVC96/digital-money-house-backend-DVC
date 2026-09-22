@@ -16,6 +16,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
 
 import java.security.SecureRandom;
 import java.util.UUID;
@@ -71,6 +72,25 @@ public class AccountService {
     public AccountResponse getById(UUID accountId) {
         Account account = findById(accountId);
         validateAccountAccess(account);
+
+        return toResponse(account);
+    }
+
+    public AccountResponse update(
+        UUID accountId,
+        UpdateAccountRequest request
+    ) {
+        Account account = findById(accountId);
+        validateAccountAccess(account);
+
+        boolean aliasChanged = !account.getAlias()
+        .equals(request.alias());
+
+        if (aliasChanged && accountRepository.existsByAlias(request.alias())) {
+            throw new ConflictException("El alias ya está en uso");
+        }
+
+        account.updateAlias(request.alias());
 
         return toResponse(account);
     }

@@ -13,10 +13,12 @@ export interface Transaction {
 }
 
 export interface Card {
-  number: string;
-  name: string;
-  type: string;
   id: string;
+  accountId: string;
+  lastFour: string;
+  brand: string;
+  holderName: string;
+  expiration: string;
 }
 
 export interface Account {

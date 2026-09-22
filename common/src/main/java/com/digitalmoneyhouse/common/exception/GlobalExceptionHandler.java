@@ -1,6 +1,7 @@
 package com.digitalmoneyhouse.common.exception;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -52,9 +53,12 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
+    @ExceptionHandler({
+        MethodArgumentNotValidException.class,
+        ConstraintViolationException.class
+    })
     public ResponseEntity<ApiError> handleValidation(
-        MethodArgumentNotValidException exception,
+        Exception exception,
         HttpServletRequest request
     ) {
         return error(

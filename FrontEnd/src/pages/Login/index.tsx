@@ -38,6 +38,7 @@ const Login = () => {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isDirty },
   } = useForm<LoginInputs>({
     criteriaMode: 'all',
@@ -74,9 +75,20 @@ const Login = () => {
   const onChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     maxLength?: number
-  ) => handleChange<LoginState>(event, setValues, maxLength);
+  ) => {
+    const { name, value } = event.target;
+    const newValue = maxLength ? value.slice(0, maxLength) : value;
 
-  const onSubmit: SubmitHandler<LoginInputs> = ({ email, password }) => {
+    handleChange(event, setValues, maxLength);
+
+    setValue(name as keyof LoginInputs, newValue, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
+
+  const onSubmit: SubmitHandler<LoginInputs> = () => {
+  const { email, password } = values;
     setIsSubmiting(true);
     login(email, password)
       .then((response) => {

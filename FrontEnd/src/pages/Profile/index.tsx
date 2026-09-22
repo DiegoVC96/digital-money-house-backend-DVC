@@ -34,7 +34,7 @@ import {
 import { useAuth, useLocalStorage, useUserInfo } from '../../hooks';
 
 export interface IProfile {
-  alias?: string;
+  alias: string;
 }
 const duration = 2000;
 const Profile = () => {
@@ -56,7 +56,7 @@ const Profile = () => {
     register,
     handleSubmit,
     formState: { errors, isDirty },
-  } = useForm({
+  } = useForm<IProfile>({
     criteriaMode: 'all',
   });
 
@@ -92,20 +92,19 @@ const Profile = () => {
   const onSubmit: SubmitHandler<IProfile> = (data) => {
     if (user && user.id) {
       updateAccount(user.id, { alias: data.alias }, token)
-        .then((response) => {
-          if (response.status) {
-            setIsError(true);
-          } else {
-            navigate(
-              `${ROUTES.PROFILE}?${SUCCESS}&${MESSAGE}${SUCCESS_MESSAGES_KEYS.ALIAS_EDITED}`
-            );
-          }
-        })
-        .catch((error) => {
-          if ((error as Response).status === UNAUTHORIZED) {
-            setToken(null);
-          }
-        });
+      .then(() => {
+        navigate(
+          `${ROUTES.PROFILE}?${SUCCESS}&${MESSAGE}${SUCCESS_MESSAGES_KEYS.ALIAS_EDITED}`
+        );
+      })
+      .catch((error) => {
+        if ((error as Response).status === UNAUTHORIZED) {
+          setToken(null);
+          return;
+        }
+
+        setIsError(true);
+      });
     }
   };
 
@@ -152,7 +151,7 @@ const Profile = () => {
                     position={TooltipPosition.top}
                   >
                     <button
-                      onClick={() => copyToClipboard('estealias.no.existe')}
+                      onClick={() => copyToClipboard(userAccount.alias || '')}
                     >
                       <Icon type="copy" />
                     </button>

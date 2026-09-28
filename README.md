@@ -61,6 +61,8 @@ docker compose logs keycloak-bootstrap
 
 Esto inicia MySQL para usuarios, cuentas y autenticación; Keycloak, MailHog y el bootstrap de Keycloak.
 
+Docker Compose verifica la disponibilidad de MySQL y Keycloak mediante healthchecks. El contenedor `keycloak-bootstrap` comienza recién cuando Keycloak informa estado `healthy`, evitando intentos de inicialización prematuros.
+
 - Keycloak: `http://localhost:8180`
 - MailHog: `http://localhost:8025`
 - Eureka: `http://localhost:8761`
@@ -161,6 +163,17 @@ Ejecutar la suite automatizada:
 mvn clean test
 ```
 
+### Colección Postman
+
+La colección importable está disponible en:
+
+```text
+docs/postman/Digital-Money-House.postman_collection.json
+```
+
+Importarla en Postman y configurar las variables email y password con un usuario de pruebas. La variable baseUrl debe conservar http://localhost:8080.
+Ejecutar primero Login y luego Obtener mi cuenta; esos requests completan automáticamente token, usuario y cuenta para el resto de las solicitudes. La colección no contiene credenciales, tokens ni secretos reales.
+
 ### Smoke API del Sprint 2
 
 La prueba `AccountApiSmokeTest` usa RestAssured para validar login, token OAuth2, API Gateway y consulta de cuenta.
@@ -176,6 +189,7 @@ mvn test -pl account-service -Dtest=AccountApiSmokeTest
 
 ```md
 Los planes, casos manuales y evidencias de los Sprints 1 y 2 están en `docs/testing`.
+```
 
 ## Seguridad
 

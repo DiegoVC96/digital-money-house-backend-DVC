@@ -11,6 +11,12 @@ services:
       - "3307:3306"
     volumes:
       - mysql-users-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot_password --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   mysql-accounts:
     image: mysql:8.4
@@ -24,6 +30,12 @@ services:
       - "3308:3306"
     volumes:
       - mysql-accounts-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot_password --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   mysql-auth:
     image: mysql:8.4
@@ -37,6 +49,12 @@ services:
       - "3309:3306"
     volumes:
       - mysql-auth-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -proot_password --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
 
   mailhog:
     image: mailhog/mailhog:v1.0.1
@@ -50,6 +68,7 @@ services:
     container_name: dmh-keycloak
     command: start-dev --import-realm
     environment:
+      KC_HEALTH_ENABLED: "true"
       KC_BOOTSTRAP_ADMIN_USERNAME: "${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}"
       KC_BOOTSTRAP_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}"
       KEYCLOAK_AUTH_SERVICE_SECRET: "${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}"
@@ -57,11 +76,23 @@ services:
       - "8180:8080"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >
+          bash -c 'exec 3<>/dev/tcp/localhost/9000 &&
+          echo -e "GET /health/ready HTTP/1.1\r\nhost: localhost\r\nConnection: close\r\n\r\n" >&3 &&
+          grep -q "200" <&3'
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
   keycloak-bootstrap:
     image: quay.io/keycloak/keycloak:26.0
     container_name: dmh-keycloak-bootstrap
     depends_on:
-      - keycloak
+      keycloak:
+        condition: service_healthy
     entrypoint: ["/bin/sh", "/opt/keycloak/bootstrap/init.sh"]
     environment:
       KEYCLOAK_URL: http://keycloak:8080

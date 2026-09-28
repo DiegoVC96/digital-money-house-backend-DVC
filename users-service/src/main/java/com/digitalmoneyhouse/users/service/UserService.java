@@ -11,6 +11,7 @@ import com.digitalmoneyhouse.users.repository.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
+import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
 
 import java.util.Locale;
 import java.util.Set;
@@ -78,6 +79,24 @@ public class UserService {
             .orElseThrow(() ->
                 new ResourceNotFoundException("Usuario no encontrado")
             );
+
+        return toResponse(user);
+    }
+
+    public UserResponse update(
+        UUID id,
+        UpdateUserRequest request
+    ) {
+        User user = userRepository.findById(id)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Usuario no encontrado")
+            );
+
+        user.updateProfile(
+            request.firstName(),
+            request.lastName(),
+            request.phone()
+        );
 
         return toResponse(user);
     }

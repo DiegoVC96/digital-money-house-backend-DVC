@@ -7,7 +7,11 @@ export function useLocalStorage(
   const [value, setValue] = useState(() => {
     const valueInLocalStorage = window.localStorage.getItem(key);
     if (valueInLocalStorage) {
-      return deserialize(valueInLocalStorage);
+      try {
+        return deserialize(valueInLocalStorage);
+      } catch {
+        return valueInLocalStorage;
+      }
     }
     return null;
   });

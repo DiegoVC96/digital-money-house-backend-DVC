@@ -50,6 +50,21 @@ public final class UserDtos {
     ) {
     }
 
+    public record UpdateUserRequest(
+        @NotBlank
+        @Size(min = 2, max = 80)
+        String firstName,
+
+        @NotBlank
+        @Size(min = 2, max = 80)
+        String lastName,
+
+        @NotBlank
+        @Pattern(regexp = "\\d{8,15}")
+        String phone
+    ) {
+    }
+
     public record AvailabilityResponse(
         boolean emailExists,
         boolean dniExists

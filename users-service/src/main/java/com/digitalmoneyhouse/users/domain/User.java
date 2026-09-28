@@ -86,4 +86,14 @@ public class User {
     public Set<Role> getRoles() {
         return roles;
     }
+
+    public void updateProfile(
+        String firstName,
+        String lastName,
+        String phone
+    ) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.phone = phone;
+    }
 }

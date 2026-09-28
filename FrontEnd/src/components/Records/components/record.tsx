@@ -2,8 +2,6 @@ import React from 'react';
 import {
   formatCurrency,
   formatDateFromString,
-  isVisa,
-  isMastercard,
   deleteUserCard,
   calculateTransacionType,
 } from '../../../utils/';
@@ -106,8 +104,8 @@ function TransactionItem({ amount, name, dated, id, type }: Transaction) {
 }
 
 function CardItem({
-  number,
-  type,
+  lastFour,
+  brand,
   isSelecting,
   id: cardId,
   setRecords,
@@ -116,14 +114,13 @@ function CardItem({
   isSelecting: boolean;
 }) {
   const navigate = useNavigate();
-  const lastFourDigits = (number && number.slice(-4)) || '';
-  const isVisaCard = isVisa(number);
-  const isMasterCard = isMastercard(number);
-  const cardType = isVisaCard
-    ? 'visa'
-    : isMasterCard
-    ? 'mastercard'
-    : 'credit-card';
+
+  const cardType =
+    brand === 'VISA'
+      ? 'visa'
+      : brand === 'MASTERCARD'
+      ? 'mastercard'
+      : 'credit-card';
   const { user } = useUserInfo();
   const { logout } = useAuth();
   const [token] = useLocalStorage('token');
@@ -131,10 +128,7 @@ function CardItem({
   const handleDelete = () => {
     if (user && user.id) {
       deleteUserCard(user.id, cardId, token)
-        .then((response) => {
-          if (response.status === UNAUTHORIZED) {
-            logout();
-          }
+        .then(() => {
           if (setRecords) {
             setRecords((prev) =>
               prev.filter((record) => (record.content as Card).id !== cardId)
@@ -158,7 +152,7 @@ function CardItem({
         <Icon type={cardType} />
 
         <p>
-          {type} terminada en {lastFourDigits}
+          {brand} terminada en {lastFour}
         </p>
       </div>
       <div className="tw-flex tw-text-left tw-gap-x-4 tw-items-center">
@@ -166,7 +160,7 @@ function CardItem({
           <button
             onClick={() =>
               navigate(
-                `${ROUTES.LOAD_MONEY}?type=${cardType}&card=${lastFourDigits}`
+                `${ROUTES.LOAD_MONEY}?type=${cardType}&card=${lastFour}`
               )
             }
             className="tw-text-primary"

@@ -28,7 +28,7 @@ import {
 import { useSearchParams } from 'react-router-dom';
 import Cards, { Focused } from 'react-credit-cards-2';
 import 'react-credit-cards-2/dist/es/styles-compiled.css';
-import { FieldValues, SubmitHandler, useForm } from 'react-hook-form';
+import { SubmitHandler, useForm } from 'react-hook-form';
 import FormControl from '@mui/material/FormControl';
 import InputLabel from '@mui/material/InputLabel';
 import OutlinedInput from '@mui/material/OutlinedInput';
@@ -39,7 +39,6 @@ import {
   expirationValidationConfig,
   cvcValidationConfig,
   isValueEmpty,
-  transformExpiration,
   valuesHaveErrors,
   getUserCards,
   parseRecordContent,
@@ -175,12 +174,20 @@ const CardsComponent = () => {
 
 export default CardsComponent;
 
+interface CardInputs {
+  number: string;
+  name: string;
+  expiry: string;
+  cvc: string;
+}
+
 function CardForm() {
   const {
     register,
     handleSubmit,
+    setValue,
     formState: { errors, isDirty },
-  } = useForm({
+  } = useForm<CardInputs>({
     criteriaMode: 'all',
   });
   const [formState, setFormState] = useState<{
@@ -208,15 +215,24 @@ function CardForm() {
   const onChange = (
     event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     maxLength?: number
-  ) => handleChange(event, setFormState, maxLength);
+  ) => {
+    const { name, value } = event.target;
+    const newValue = maxLength ? value.slice(0, maxLength) : value;
+
+    handleChange(event, setFormState, maxLength);
+
+    setValue(name as keyof CardInputs, newValue, {
+      shouldDirty: true,
+      shouldValidate: true,
+    });
+  };
 
   const handleFocus = (event: React.FocusEvent<HTMLInputElement>) => {
     setFormState({ ...formState, focused: event.target.name });
   };
 
-  const onSubmit: SubmitHandler<FieldValues> = (data) => {
-    const { expiry, number, name, cvc } = data;
-    transformExpiration(expiry);
+  const onSubmit: SubmitHandler<CardInputs> = () => {
+    const { expiry, number, name, cvc } = formState;
     if (user && user.id) {
       createUserCard(
         user.id,

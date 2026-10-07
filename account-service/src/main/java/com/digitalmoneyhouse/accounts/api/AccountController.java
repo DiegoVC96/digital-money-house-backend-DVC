@@ -22,9 +22,14 @@ import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CardResponse;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateCardRequest;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateDepositRequest;
+import com.digitalmoneyhouse.accounts.domain.ActivityAmountRange;
+import com.digitalmoneyhouse.accounts.domain.ActivityDirection;
 import com.digitalmoneyhouse.accounts.service.CardService;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 
@@ -92,6 +97,48 @@ public class AccountController {
         @Min(1) @Max(5) int limit
     ) {
         return accountService.getRecentTransactions(accountId, limit);
+    }
+
+    @GetMapping("/{accountId}/activity")
+    @PreAuthorize("isAuthenticated()")
+    public List<TransactionResponse> getActivity(
+        @PathVariable UUID accountId,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+        Instant from,
+        @RequestParam(required = false)
+        @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+        Instant to,
+        @RequestParam(required = false) ActivityDirection type,
+        @RequestParam(required = false) ActivityAmountRange range
+    ) {
+        return accountService.getActivity(
+            accountId,
+            from,
+            to,
+            type,
+            range
+        );
+    }
+
+    @GetMapping("/{accountId}/activity/{transactionId}")
+    @PreAuthorize("isAuthenticated()")
+    public TransactionResponse getActivityDetail(
+        @PathVariable UUID accountId,
+        @PathVariable UUID transactionId
+    ) {
+        return accountService.getActivityDetail(accountId, transactionId);
+    }
+
+    @PostMapping("/{accountId}/transferences")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<TransactionResponse> deposit(
+        @PathVariable UUID accountId,
+        @Valid @RequestBody CreateDepositRequest request
+    ) {
+        return ResponseEntity
+            .status(HttpStatus.CREATED)
+            .body(accountService.deposit(accountId, request));
     }
 
     @PostMapping("/{accountId}/cards")

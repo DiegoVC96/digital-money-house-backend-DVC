@@ -160,7 +160,7 @@ function CardItem({
           <button
             onClick={() =>
               navigate(
-                `${ROUTES.LOAD_MONEY}?type=${cardType}&card=${lastFour}`
+                `${ROUTES.LOAD_MONEY}?type=${cardType}&card=${cardId}`
               )
             }
             className="tw-text-primary"

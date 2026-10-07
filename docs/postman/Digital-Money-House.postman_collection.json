@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "e0313422-f431-48de-b014-733d94b85bd7",
     "name": "Digital Money House API",
-    "description": "Colección para probar los flujos de los Sprints 1 y 2 mediante API Gateway.",
+    "description": "Colección para probar los flujos de los Sprints 1, 2 y 3 mediante API Gateway.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "53128107",
     "_collection_link": "https://go.postman.co/collection/53128107-e0313422-f431-48de-b014-733d94b85bd7?source=collection_link"
@@ -44,7 +44,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"postman.sprint2@example.com\",\n  \"password\": \"ClaveSegura123\"\n}",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -483,6 +483,105 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Actividad e ingreso de dinero",
+      "item": [
+        {
+          "name": "Listar actividad filtrada",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/activity?type=INCOME&range=FROM_1000_TO_5000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "{{accountId}}", "activity"],
+              "query": [
+                { "key": "type", "value": "INCOME" },
+                { "key": "range", "value": "FROM_1000_TO_5000" }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Ingresar dinero con tarjeta",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Ingreso creado', () => pm.response.to.have.status(201));",
+                  "const transaction = pm.response.json();",
+                  "pm.test('Es un depósito', () => pm.expect(transaction.type).to.eql('DEPOSIT'));",
+                  "pm.collectionVariables.set('transactionId', transaction.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"cardId\": \"{{cardId}}\",\n  \"amount\": 500\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "{{accountId}}", "transferences"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Obtener detalle de actividad",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/accounts/{{accountId}}/activity/{{transactionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "accounts", "{{accountId}}", "activity", "{{transactionId}}"]
+            }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -516,6 +615,10 @@
     },
     {
       "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "transactionId",
       "value": ""
     },
     {

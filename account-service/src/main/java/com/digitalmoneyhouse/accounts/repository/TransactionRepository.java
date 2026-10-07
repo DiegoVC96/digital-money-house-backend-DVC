@@ -5,6 +5,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TransactionRepository
@@ -13,5 +14,12 @@ public interface TransactionRepository
     List<Transaction> findByAccount_IdOrderByCreatedAtDesc(
         UUID accountId,
         Pageable pageable
+    );
+
+    List<Transaction> findByAccount_IdOrderByCreatedAtDesc(UUID accountId);
+
+    Optional<Transaction> findByIdAndAccount_Id(
+        UUID transactionId,
+        UUID accountId
     );
 }

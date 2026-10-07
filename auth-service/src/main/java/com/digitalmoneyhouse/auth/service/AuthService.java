@@ -5,6 +5,7 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.AuthResponse;
 import com.digitalmoneyhouse.auth.api.AuthDtos.LoginRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.RegisterRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.RegisteredUser;
+import com.digitalmoneyhouse.auth.api.AuthDtos.UpdateIdentityRequest;
 import com.digitalmoneyhouse.auth.client.AccountsClient;
 import com.digitalmoneyhouse.auth.client.UsersClient;
 import org.springframework.stereotype.Service;
@@ -14,6 +15,7 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
 import com.digitalmoneyhouse.auth.domain.VerificationPurpose;
+import com.digitalmoneyhouse.auth.service.UpdateIdentityRequest;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -190,6 +192,19 @@ public void confirmEmailVerification(
             userId,
             null,
             null
+        );
+    }
+
+    public void updateIdentity(
+        UUID userId,
+        UpdateIdentityRequest request
+    ) {
+        keycloakIdentityService.updateUser(
+            userId,
+            request.email().toLowerCase(Locale.ROOT),
+            request.firstName(),
+            request.lastName(),
+            request.password()
         );
     }
 }

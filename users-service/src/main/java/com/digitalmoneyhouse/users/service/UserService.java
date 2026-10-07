@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
 import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
+import com.digitalmoneyhouse.users.client.IdentityClient;
 
 import java.util.Locale;
 import java.util.Set;
@@ -24,13 +25,16 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final IdentityClient identityClient;
 
     public UserService(
         UserRepository userRepository,
-        RoleRepository roleRepository
+        RoleRepository roleRepository,
+        IdentityClient identityClient
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
+        this.identityClient = identityClient;
     }
 
     public UserResponse create(CreateUserRequest request) {
@@ -84,22 +88,50 @@ public class UserService {
     }
 
     public UserResponse update(
-        UUID id,
-        UpdateUserRequest request
-    ) {
-        User user = userRepository.findById(id)
-            .orElseThrow(() ->
-                new ResourceNotFoundException("Usuario no encontrado")
-            );
-
-        user.updateProfile(
-            request.firstName(),
-            request.lastName(),
-            request.phone()
+    UUID id,
+    UpdateUserRequest request,
+    String authorization
+) {
+    User user = userRepository.findById(id)
+        .orElseThrow(() ->
+            new ResourceNotFoundException("Usuario no encontrado")
         );
 
-        return toResponse(user);
+    String email = request.email().toLowerCase(Locale.ROOT);
+
+    if (userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
+        throw new ConflictException(
+            "Ya existe un usuario con ese email"
+        );
     }
+
+    if (userRepository.existsByDniAndIdNot(request.dni(), id)) {
+        throw new ConflictException(
+            "Ya existe un usuario con ese DNI"
+        );
+    }
+
+    identityClient.updateIdentity(
+        id,
+        authorization,
+        new IdentityClient.UpdateIdentityRequest(
+            request.firstName(),
+            request.lastName(),
+            email,
+            request.password()
+        )
+    );
+
+    user.updateProfile(
+        request.firstName(),
+        request.lastName(),
+        request.phone(),
+        request.dni(),
+        email
+    );
+
+    return toResponse(user);
+}
 
     private UserResponse toResponse(User user) {
         Set<String> roles = user.getRoles()

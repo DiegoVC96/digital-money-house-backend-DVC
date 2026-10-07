@@ -96,6 +96,24 @@ public record EmailVerificationConfirmRequest(
     ) {
     }
 
+    public record UpdateIdentityRequest(
+        @NotBlank
+        @Size(min = 2, max = 80)
+        String firstName,
+
+        @NotBlank
+        @Size(min = 2, max = 80)
+        String lastName,
+
+        @NotBlank
+        @Email
+        String email,
+
+        @Size(min = 8, max = 72)
+        String password
+    ) {
+    }
+
     public record AuthResponse(
         String accessToken,
         String refreshToken,

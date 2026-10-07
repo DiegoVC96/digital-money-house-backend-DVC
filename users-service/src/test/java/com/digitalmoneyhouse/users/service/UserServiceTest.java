@@ -13,6 +13,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
+import com.digitalmoneyhouse.users.api.UserDtos.UserResponse;
+import com.digitalmoneyhouse.users.client.IdentityClient;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +22,8 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,6 +34,9 @@ class UserServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
+
+    @Mock
+    private IdentityClient identityClient;
 
     @InjectMocks
     private UserService userService;
@@ -95,7 +102,7 @@ class UserServiceTest {
     }
 
     @Test
-    void updatesOnlyEditableProfileFields() {
+    void updatesAllAllowedProfileFieldsAndIdentity() {
         UUID id = UUID.randomUUID();
 
         User user = new User(
@@ -111,19 +118,33 @@ class UserServiceTest {
         UpdateUserRequest request = new UpdateUserRequest(
             "Ana María",
             "Gómez",
-            "1198765432"
+            "1198765432",
+            "87654321",
+            "ana.maria@example.com",
+            "NuevaClave123"
         );
 
-        when(userRepository.findById(id))
-            .thenReturn(Optional.of(user));
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+        when(userRepository.existsByEmailIgnoreCaseAndIdNot("ana.maria@example.com", id)).thenReturn(false);
+        when(userRepository.existsByDniAndIdNot("87654321", id)).thenReturn(false);
 
-        var response = userService.update(id, request);
+        UserResponse response = userService.update(
+            id,
+            request,
+            "Bearer token-de-prueba"
+        );
 
         assertEquals("Ana María", response.firstName());
         assertEquals("Gómez", response.lastName());
         assertEquals("1198765432", response.phone());
 
-        assertEquals("ana@example.com", response.email());
-        assertEquals("12345678", response.dni());
+        assertEquals("ana.maria@example.com", response.email());
+        assertEquals("87654321", response.dni());
+
+        verify(identityClient).updateIdentity(
+            eq(id),
+            eq("Bearer token-de-prueba"),
+            any(IdentityClient.UpdateIdentityRequest.class)
+        );
     }
 }

@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
 
@@ -55,7 +58,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler({
         MethodArgumentNotValidException.class,
-        ConstraintViolationException.class
+        ConstraintViolationException.class,
+        MethodArgumentTypeMismatchException.class,
+        HttpMessageNotReadableException.class,
+        IllegalArgumentException.class
     })
     public ResponseEntity<ApiError> handleValidation(
         Exception exception,
@@ -64,6 +70,18 @@ public class GlobalExceptionHandler {
         return error(
             HttpStatus.BAD_REQUEST,
             "Los datos enviados no son válidos",
+            request
+        );
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiError> handleForbidden(
+        AccessDeniedException exception,
+        HttpServletRequest request
+    ) {
+        return error(
+            HttpStatus.FORBIDDEN,
+            "No tenés permiso para acceder a este recurso",
             request
         );
     }

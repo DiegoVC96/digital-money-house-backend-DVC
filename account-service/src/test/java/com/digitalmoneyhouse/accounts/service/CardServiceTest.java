@@ -17,6 +17,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 
 import java.util.List;
 import java.util.Optional;
@@ -105,6 +106,25 @@ class CardServiceTest {
         );
 
         verify(paymentCardRepository, never()).save(any(PaymentCard.class));
+    }
+
+    @Test
+    void returnsNotFoundWhenAccountDoesNotExist() {
+        UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
+
+        authenticateAs(userId);
+
+        when(accountRepository.findById(accountId))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> cardService.findAllByAccount(accountId)
+        );
+
+        verify(paymentCardRepository, never())
+            .findByAccount_Id(accountId);
     }
 
     @Test

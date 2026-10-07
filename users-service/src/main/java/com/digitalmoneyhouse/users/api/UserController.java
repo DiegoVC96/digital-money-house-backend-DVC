@@ -17,6 +17,8 @@ import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.http.HttpHeaders;
+import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.UUID;
 
@@ -61,14 +63,17 @@ public class UserController {
     }
 
     @PatchMapping("/{id}")
-    @PreAuthorize("""
-        #id.toString() == authentication.name
-        or hasRole('ADMIN')
-    """)
-    public UserResponse update(
-        @PathVariable("id") UUID id,
-        @Valid @RequestBody UpdateUserRequest request
-    ) {
-        return userService.update(id, request);
-    }
+@PreAuthorize("""
+    #id.toString() == authentication.name
+    or hasRole('ADMIN')
+""")
+public ResponseEntity<UserResponse> update(
+    @PathVariable("id") UUID id,
+    @Valid @RequestBody UpdateUserRequest request,
+    @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
+) {
+    return ResponseEntity
+        .status(HttpStatus.CREATED)
+        .body(userService.update(id, request, authorization));
+}
 }

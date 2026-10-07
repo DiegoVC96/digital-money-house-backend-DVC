@@ -117,20 +117,7 @@ public void resetPassword(
     String token = tokenService.getServiceAccessToken();
     UUID userId = findUserIdByEmail(email, token);
 
-    restClient.put()
-        .uri(baseUrl + "/admin/realms/" + realm
-            + "/users/" + userId + "/reset-password")
-        .headers(headers -> headers.setBearerAuth(token))
-        .contentType(MediaType.APPLICATION_JSON)
-        .body(
-            Map.of(
-                "type", "password",
-                "value", newPassword,
-                "temporary", false
-            )
-        )
-        .retrieve()
-        .toBodilessEntity();
+    updatePassword(userId, newPassword, token);
 }
 
 private UUID findUserIdByEmail(
@@ -192,4 +179,87 @@ private UUID findUserIdByEmail(
             .retrieve()
             .toBodilessEntity();
     }
+
+    public void updateUser(
+    UUID userId,
+    String email,
+    String firstName,
+    String lastName,
+    String password
+) {
+    String token = tokenService.getServiceAccessToken();
+
+    restClient.put()
+        .uri(
+            baseUrl + "/admin/realms/" + realm
+                + "/users/" + userId
+        )
+        .headers(headers -> headers.setBearerAuth(token))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(
+            Map.of(
+            "email", email,
+            "firstName", firstName,
+            "lastName", lastName,
+            "emailVerified", false
+            )
+        )
+        .exchange((request, response) -> {
+            if (response.getStatusCode().value() == 404) {
+                throw new ResourceNotFoundException(
+                    "Usuario no encontrado en Keycloak"
+                );
+            }
+
+            if (response.getStatusCode().value() == 409) {
+                throw new ConflictException(
+                    "Ya existe un usuario con ese email"
+                );
+            }
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+
+                if (response.getStatusCode().value() == 400) {
+                    throw new IllegalArgumentException(
+                    "Keycloak rechazó los datos de actualización"
+                    );
+                }
+
+                if (!response.getStatusCode().is2xxSuccessful()) {
+                    throw new IllegalStateException(
+                    "No se pudo actualizar el usuario en Keycloak"
+                    );
+                }
+            }
+
+            return null;
+        });
+
+    if (password != null && !password.isBlank()) {
+        updatePassword(userId, password, token);
+    }
+}
+
+private void updatePassword(
+    UUID userId,
+    String password,
+    String token
+) {
+    restClient.put()
+        .uri(
+            baseUrl + "/admin/realms/" + realm
+                + "/users/" + userId + "/reset-password"
+        )
+        .headers(headers -> headers.setBearerAuth(token))
+        .contentType(MediaType.APPLICATION_JSON)
+        .body(
+            Map.of(
+                "type", "password",
+                "value", password,
+                "temporary", false
+            )
+        )
+        .retrieve()
+        .toBodilessEntity();
+}
 }

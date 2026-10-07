@@ -2,16 +2,17 @@
 
 ## Objetivo
 
-Verificar que el usuario autenticado pueda consultar su cuenta y movimientos, actualizar datos permitidos de su perfil y gestionar tarjetas asociadas a su cuenta.
+Verificar que el usuario autenticado pueda consultar su cuenta y movimientos, actualizar de forma consistente su perfil y credenciales, y gestionar tarjetas asociadas a su cuenta.
 
 ## Alcance
 
 - Dashboard: saldo disponible y últimos cinco movimientos.
-- Perfil: consulta y actualización de alias; actualización de nombre, apellido y teléfono.
-- Inmutabilidad de CVU, saldo, email y DNI.
+- Perfil: consulta y actualización de nombre, apellido, teléfono, DNI, email y contraseña.
+- Sincronización de email, nombre, apellido y contraseña con Keycloak.
+- Inmutabilidad de CVU y saldo.
 - Tarjetas: alta, listado, detalle y eliminación.
 - Seguridad: solo el propietario o un administrador puede acceder a recursos de una cuenta.
-- Validaciones: alias, límites de movimientos, formato de tarjeta, duplicados y recursos inexistentes.
+- Validaciones: alias, límites de movimientos, formato de tarjeta, duplicados, campos de perfil y recursos inexistentes.
 - Pruebas unitarias de `users-service` y `account-service`.
 - Smoke API con RestAssured a través de API Gateway.
 
@@ -47,12 +48,12 @@ Verificar que el usuario autenticado pueda consultar su cuenta y movimientos, ac
 
 - Token Keycloak vencido durante una prueba.
 - Servicio aún no registrado en Eureka, provocando `503` en Gateway.
-- Datos persistentes de pruebas que generen conflictos de alias o tarjeta.
+- Datos persistentes de pruebas que generen conflictos de alias, tarjeta, email o DNI.
 - El número de tarjeta o CVC no debe aparecer en respuestas ni persistirse.
 
 ## Evidencia automatizada
 
 - `AccountServiceTest`: cuenta, movimientos y actualización de alias.
-- `CardServiceTest`: alta segura, duplicados y control de acceso.
-- `UserServiceTest`: actualización de datos editables.
+- `CardServiceTest`: alta segura, duplicados, control de acceso y cuenta inexistente.
+- `UserServiceTest`: actualización de todos los datos permitidos y propagación a identidad.
 - `AccountApiSmokeTest`: login, token OAuth2, Gateway y consulta de cuenta.

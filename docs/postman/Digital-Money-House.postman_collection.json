@@ -145,6 +145,64 @@
           "response": []
         },
         {
+          "name": "Actualizar perfil completo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Perfil actualizado', () => pm.response.to.have.status(201));",
+                  "pm.test('Email actualizado', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('updatedEmail')));",
+                  "pm.test('DNI actualizado', () => pm.expect(pm.response.json().dni).to.eql(pm.collectionVariables.get('updatedDni')));",
+                  "pm.collectionVariables.set('email', pm.response.json().email);",
+                  "pm.collectionVariables.set('password', pm.collectionVariables.get('updatedPassword'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"{{updatedFirstName}}\",\n  \"lastName\": \"{{updatedLastName}}\",\n  \"phone\": \"{{updatedPhone}}\",\n  \"dni\": \"{{updatedDni}}\",\n  \"email\": \"{{updatedEmail}}\",\n  \"password\": \"{{updatedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "users",
+                "{{userId}}"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Obtener mi cuenta",
           "event": [
             {
@@ -458,6 +516,30 @@
     },
     {
       "key": "cardId",
+      "value": ""
+    },
+    {
+      "key": "updatedFirstName",
+      "value": "Usuario"
+    },
+    {
+      "key": "updatedLastName",
+      "value": "Actualizado"
+    },
+    {
+      "key": "updatedPhone",
+      "value": "1188888888"
+    },
+    {
+      "key": "updatedDni",
+      "value": ""
+    },
+    {
+      "key": "updatedEmail",
+      "value": ""
+    },
+    {
+      "key": "updatedPassword",
       "value": ""
     }
   ]

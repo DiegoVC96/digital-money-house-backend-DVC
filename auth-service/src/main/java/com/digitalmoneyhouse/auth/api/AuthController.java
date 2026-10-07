@@ -17,6 +17,11 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
+import com.digitalmoneyhouse.auth.api.AuthDtos.UpdateIdentityRequest;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -99,6 +104,17 @@ public ResponseEntity<Void> confirmEmailVerification(
 ) {
     String email = authentication.getToken().getClaimAsString("email");
     authService.confirmEmailVerification(email, request);
+
+    return ResponseEntity.ok().build();
+}
+
+@PutMapping("/internal/users/{userId}")
+@PreAuthorize("#userId.toString() == authentication.name")
+public ResponseEntity<Void> updateIdentity(
+    @PathVariable UUID userId,
+    @Valid @RequestBody UpdateIdentityRequest request
+) {
+    authService.updateIdentity(userId, request);
 
     return ResponseEntity.ok().build();
 }

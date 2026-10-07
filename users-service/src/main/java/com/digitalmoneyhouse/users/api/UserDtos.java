@@ -61,7 +61,18 @@ public final class UserDtos {
 
         @NotBlank
         @Pattern(regexp = "\\d{8,15}")
-        String phone
+        String phone,
+
+        @NotBlank
+        @Pattern(regexp = "\\d{7,8}")
+        String dni,
+
+        @NotBlank
+        @Email
+        String email,
+
+        @Size(min = 8, max = 72)
+        String password
     ) {
     }
 

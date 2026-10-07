@@ -90,10 +90,14 @@ public class User {
     public void updateProfile(
         String firstName,
         String lastName,
-        String phone
+        String phone,
+        String dni,
+        String email
     ) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.phone = phone;
+        this.dni = dni;
+        this.email = email;
     }
 }

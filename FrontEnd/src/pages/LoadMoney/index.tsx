@@ -26,7 +26,8 @@ const duration = 3000;
 const LoadMoney = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const card = !!searchParams.get('card');
+  const cardId = searchParams.get('card');
+  const card = !!cardId;
   const { user } = useUserInfo();
   const [token] = useLocalStorage('token');
   const [isError, setIsError] = useState<boolean>(false);
@@ -60,9 +61,9 @@ const LoadMoney = () => {
   ) => handleChange(event, setFormState);
 
   const onSubmit: SubmitHandler<any> = (data) => {
-    if (user && user.id) {
+    if (user && user.id && cardId) {
       setIsSubmiting(true);
-      createDepositActivity(user.id, parseFloat(data.money), token)
+      createDepositActivity(user.id, cardId, parseFloat(data.money), token)
         .then(() => {
           setIsSubmiting(false);
           navigate(`${ROUTES.HOME}?${SUCCESS}`);

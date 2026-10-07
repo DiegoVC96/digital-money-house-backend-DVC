@@ -1,6 +1,8 @@
 package com.digitalmoneyhouse.accounts.api;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.constraints.Pattern;
@@ -82,6 +84,16 @@ public final class AccountDtos {
         CardBrand brand,
         String holderName,
         String expiration
+    ) {
+    }
+
+    public record CreateDepositRequest(
+        @NotNull UUID cardId,
+
+        @NotNull
+        @DecimalMin(value = "0.01")
+        @Digits(integer = 17, fraction = 2)
+        BigDecimal amount
     ) {
     }
 }

@@ -1,4 +1,4 @@
-# Digital Money House — Sprint 1
+# Digital Money House — Sprints 1, 2 y 3
 
 Proyecto full-stack de billetera digital con microservicios Spring Boot, Keycloak y React.
 
@@ -188,7 +188,13 @@ $env:SMOKE_PASSWORD = "ClaveSegura123"
 mvn test -pl account-service -Dtest=AccountApiSmokeTest
 
 ```md
-Los planes, casos manuales y evidencias de los Sprints 1 y 2 están en `docs/testing`.
+### Endpoints del Sprint 3
+
+- `GET /api/accounts/{accountId}/activity`: lista la actividad de la cuenta, con filtros opcionales `from`, `to`, `type=INCOME|EXPENSE` y `range`.
+- `GET /api/accounts/{accountId}/activity/{transactionId}`: obtiene el detalle de un movimiento.
+- `POST /api/accounts/{accountId}/transferences`: acredita saldo desde una tarjeta propia. Recibe `cardId` y `amount`; devuelve HTTP 201.
+
+Los planes, casos manuales y evidencias de los Sprints 1, 2 y 3 están en `docs/testing`. La colección actualizada de Postman está en `docs/postman/Digital-Money-House.postman_collection.json`.
 ```
 
 ## Seguridad

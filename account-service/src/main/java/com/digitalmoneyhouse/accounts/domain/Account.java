@@ -70,4 +70,14 @@ public class Account {
     public void updateAlias(String alias) {
         this.alias = alias;
     }
+
+    public void credit(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException(
+                "El importe a acreditar debe ser mayor que cero"
+            );
+        }
+
+        balance = balance.add(amount);
+    }
 }

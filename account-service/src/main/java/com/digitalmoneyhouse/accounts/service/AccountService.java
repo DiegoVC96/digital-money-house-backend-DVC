@@ -17,8 +17,15 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
+import com.digitalmoneyhouse.accounts.domain.ActivityAmountRange;
+import com.digitalmoneyhouse.accounts.domain.ActivityDirection;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateDepositRequest;
+import com.digitalmoneyhouse.accounts.domain.PaymentCard;
+import com.digitalmoneyhouse.accounts.domain.TransactionType;
+import com.digitalmoneyhouse.accounts.repository.PaymentCardRepository;
 
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
 
@@ -30,14 +37,17 @@ public class AccountService {
     private final AliasWordsProvider aliasWordsProvider;
     private final SecureRandom secureRandom = new SecureRandom();
     private final TransactionRepository transactionRepository;
+    private final PaymentCardRepository paymentCardRepository;
 
     public AccountService(
         AccountRepository accountRepository,
         TransactionRepository transactionRepository,
+        PaymentCardRepository paymentCardRepository,
         AliasWordsProvider aliasWordsProvider
     ) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
+        this.paymentCardRepository = paymentCardRepository;
         this.aliasWordsProvider = aliasWordsProvider;
     }
 
@@ -115,6 +125,81 @@ public class AccountService {
             .stream()
             .map(this::toTransactionResponse)
             .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<TransactionResponse> getActivity(
+        UUID accountId,
+        Instant from,
+        Instant to,
+        ActivityDirection type,
+        ActivityAmountRange range
+    ) {
+        Account account = findById(accountId);
+        validateAccountAccess(account);
+
+        if (from != null && to != null && from.isAfter(to)) {
+            throw new IllegalArgumentException(
+                "La fecha inicial no puede ser posterior a la fecha final"
+            );
+        }
+
+        return transactionRepository
+            .findByAccount_IdOrderByCreatedAtDesc(accountId)
+            .stream()
+            .filter(transaction -> from == null
+                || !transaction.getCreatedAt().isBefore(from))
+            .filter(transaction -> to == null
+                || !transaction.getCreatedAt().isAfter(to))
+            .filter(transaction -> type == null
+                || type.includes(transaction.getType()))
+            .filter(transaction -> range == null
+                || range.includes(transaction.getAmount()))
+            .map(this::toTransactionResponse)
+            .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public TransactionResponse getActivityDetail(
+        UUID accountId,
+        UUID transactionId
+    ) {
+        Account account = findById(accountId);
+        validateAccountAccess(account);
+
+        Transaction transaction = transactionRepository
+            .findByIdAndAccount_Id(transactionId, accountId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Movimiento no encontrado")
+            );
+
+        return toTransactionResponse(transaction);
+    }
+
+    public TransactionResponse deposit(
+        UUID accountId,
+        CreateDepositRequest request
+    ) {
+        Account account = findById(accountId);
+        validateAccountAccess(account);
+
+        PaymentCard card = paymentCardRepository
+            .findByIdAndAccount_Id(request.cardId(), accountId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Tarjeta no encontrada")
+            );
+
+        account.credit(request.amount());
+
+        Transaction transaction = new Transaction(
+            account,
+            TransactionType.DEPOSIT,
+            request.amount(),
+            "Ingreso de dinero con tarjeta terminada en "
+                + card.getLastFour()
+        );
+
+        return toTransactionResponse(transactionRepository.save(transaction));
     }
 
     private Account findById(UUID accountId) {

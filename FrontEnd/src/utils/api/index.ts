@@ -1,4 +1,10 @@
-import { UserAccount, User, Transaction, TransactionType } from '../../types';
+import {
+  ActivityFilters,
+  UserAccount,
+  User,
+  Transaction,
+  TransactionType,
+} from '../../types';
 
 const myInit = (method = 'GET', token?: string) => {
   return {
@@ -17,7 +23,7 @@ const myRequest = (endpoint: string, method: string, token?: string) =>
 
 const baseUrl = 'http://localhost:8080/api';
 
-const rejectPromise = (response?: Response): Promise<Response> =>
+const rejectPromise = <T = never>(response?: Response): Promise<T> =>
   Promise.reject({
     status: (response && response.status) || '00',
     statusText: (response && response.statusText) || 'Ocurrió un error',
@@ -36,7 +42,7 @@ export const login = (email: string, password: string) => {
     })
     .catch((err) => {
       console.log(err);
-      return rejectPromise(err);
+      return Promise.reject(err);
     });
 };
 
@@ -139,21 +145,7 @@ export const getRecentTransactions = (
     .then((response) =>
       response.ok ? response.json() : rejectPromise(response)
     )
-    .then((transactions) =>
-      transactions.map((transaction: any): Transaction => ({
-        id: transaction.id,
-        amount:
-          transaction.type === 'TRANSFER_OUT'
-            ? -transaction.amount
-            : transaction.amount,
-        name: transaction.description,
-        dated: transaction.createdAt,
-        type:
-          transaction.type === 'DEPOSIT'
-            ? TransactionType.Deposit
-            : TransactionType.Transfer,
-      }))
-    )
+    .then((transactions) => transactions.map(toTransaction))
     .catch((err) => {
       console.log(err);
       return rejectPromise(err);
@@ -204,18 +196,42 @@ export const updateAccount = (
 export const getUserActivities = (
   userId: string,
   token: string,
-  limit?: number
+  filters: ActivityFilters = {}
 ): Promise<Transaction[]> => {
-  return fetch(
-    myRequest(
-      `${baseUrl}/users/${userId}/activities${limit ? `?_limit=${limit}` : ''}`,
-      'GET',
-      token
+  const query = new URLSearchParams();
+
+  if (filters.from) {
+    query.set('from', `${filters.from}T00:00:00Z`);
+  }
+
+  if (filters.to) {
+    query.set('to', `${filters.to}T23:59:59.999Z`);
+  }
+
+  if (filters.type) {
+    query.set('type', filters.type);
+  }
+
+  if (filters.range) {
+    query.set('range', filters.range);
+  }
+
+  const queryString = query.toString();
+  const suffix = queryString ? `?${queryString}` : '';
+
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(
+          `${baseUrl}/accounts/${account.id}/activity${suffix}`,
+          'GET',
+          token
+        )
+      )
     )
-  )
     .then((response) => {
       if (response.ok) {
-        return response.json();
+        return response.json().then((transactions) => transactions.map(toTransaction));
       }
       return rejectPromise(response);
     })
@@ -230,22 +246,25 @@ export const getUserActivity = (
   activityId: string,
   token: string
 ): Promise<Transaction> => {
-  return fetch(
-    myRequest(
-      `${baseUrl}/users/${userId}/activities/${activityId}`,
-      'GET',
-      token
+  return getAccount(userId, token)
+    .then((account) =>
+      fetch(
+        myRequest(
+          `${baseUrl}/accounts/${account.id}/activity/${activityId}`,
+          'GET',
+          token
+        )
+      )
     )
-  )
     .then((response) => {
       if (response.ok) {
-        return response.json();
+        return response.json().then(toTransaction);
       }
       return rejectPromise(response);
     })
     .catch((err) => {
       console.log(err);
-      return rejectPromise(err);
+      return Promise.reject(err);
     });
 };
 
@@ -343,71 +362,48 @@ export const createUserCard = (
     });
 };
 
-// TODO: edit when backend is ready
 export const createDepositActivity = (
   userId: string,
+  cardId: string,
   amount: number,
   token: string
-) => {
-  const maxAmount = 30000;
-  if (amount > maxAmount) return rejectPromise();
-
-  const activity = {
-    amount,
-    type: 'Deposit',
-    description: 'Depósito con tarjeta',
-    dated: new Date(), // date must be genarated in backend
-  };
-
-  return fetch(
-    myRequest(`${baseUrl}/users/${userId}/activities`, 'POST', token),
-    {
-      body: JSON.stringify(activity),
-    }
-  )
-    .then((response) =>
-      response.ok ? response.json() : rejectPromise(response)
-    )
-    .then((data) => {
-      depositMoney(data.amount, userId, token);
-    })
-    .catch((err) => {
-      console.log(err);
-      return rejectPromise(err);
-    });
-};
-
-// TODO: remove when backend is ready
-const depositMoney = (amount: number, userId: string, token: string) => {
+) : Promise<Transaction> => {
   return getAccount(userId, token)
-    .then((account) => {
-      const newBalance = account.balance + amount;
-      const accountId = account.id;
-      return {
-        newBalance,
-        accountId,
-      };
-    })
-    .then(({ newBalance, accountId }) => {
+    .then((account) =>
       fetch(
         myRequest(
-          `${baseUrl}/users/${userId}/accounts/${accountId}`,
-          'PATCH',
+          `${baseUrl}/accounts/${account.id}/transferences`,
+          'POST',
           token
         ),
         {
-          body: JSON.stringify({ balance: newBalance }),
+          body: JSON.stringify({ cardId, amount }),
         }
       )
-        .then((response) =>
-          response.ok ? response.json() : rejectPromise(response)
-        )
-        .catch((err) => {
-          console.log(err);
-          return rejectPromise(err);
-        });
+    )
+    .then((response) =>
+      response.ok ? response.json() : rejectPromise(response)
+    )
+    .then(toTransaction)
+    .catch((err) => {
+      console.log(err);
+      return Promise.reject(err);
     });
 };
+
+const toTransaction = (transaction: any): Transaction => ({
+  id: transaction.id,
+  amount:
+    transaction.type === 'TRANSFER_OUT'
+      ? -transaction.amount
+      : transaction.amount,
+  name: transaction.description,
+  dated: transaction.createdAt,
+  type:
+    transaction.type === 'DEPOSIT'
+      ? TransactionType.Deposit
+      : TransactionType.Transfer,
+});
 
 // TODO: edit when backend is ready
 export const createTransferActivity = (

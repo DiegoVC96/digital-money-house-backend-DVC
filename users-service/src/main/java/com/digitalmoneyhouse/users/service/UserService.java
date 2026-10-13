@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.digitalmoneyhouse.users.api.UserDtos.AvailabilityResponse;
 import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
 import com.digitalmoneyhouse.users.client.IdentityClient;
+import com.digitalmoneyhouse.users.client.AccountClient;
 
 import java.util.Locale;
 import java.util.Set;
@@ -26,15 +27,18 @@ public class UserService {
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
     private final IdentityClient identityClient;
+    private final AccountClient accountClient;
 
     public UserService(
         UserRepository userRepository,
         RoleRepository roleRepository,
-        IdentityClient identityClient
+        IdentityClient identityClient,
+        AccountClient accountClient
     ) {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
         this.identityClient = identityClient;
+        this.accountClient = accountClient;
     }
 
     public UserResponse create(CreateUserRequest request) {
@@ -97,15 +101,35 @@ public class UserService {
             new ResourceNotFoundException("Usuario no encontrado")
         );
 
-    String email = request.email().toLowerCase(Locale.ROOT);
+    if (request.isEmpty()) {
+        throw new IllegalArgumentException(
+            "Debe enviar al menos un campo para actualizar"
+        );
+    }
 
-    if (userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
+    String firstName = valueOrCurrent(
+        request.firstName(), user.getFirstName()
+    );
+    String lastName = valueOrCurrent(
+        request.lastName(), user.getLastName()
+    );
+    String phone = valueOrCurrent(request.phone(), user.getPhone());
+    String dni = valueOrCurrent(request.dni(), user.getDni());
+    String email = request.email() == null
+        ? user.getEmail()
+        : request.email().toLowerCase(Locale.ROOT);
+    boolean holderNameChanged = !firstName.equals(user.getFirstName())
+        || !lastName.equals(user.getLastName());
+
+    if (!email.equalsIgnoreCase(user.getEmail())
+        && userRepository.existsByEmailIgnoreCaseAndIdNot(email, id)) {
         throw new ConflictException(
             "Ya existe un usuario con ese email"
         );
     }
 
-    if (userRepository.existsByDniAndIdNot(request.dni(), id)) {
+    if (!dni.equals(user.getDni())
+        && userRepository.existsByDniAndIdNot(dni, id)) {
         throw new ConflictException(
             "Ya existe un usuario con ese DNI"
         );
@@ -115,23 +139,37 @@ public class UserService {
         id,
         authorization,
         new IdentityClient.UpdateIdentityRequest(
-            request.firstName(),
-            request.lastName(),
+            firstName,
+            lastName,
             email,
             request.password()
         )
     );
 
     user.updateProfile(
-        request.firstName(),
-        request.lastName(),
-        request.phone(),
-        request.dni(),
+        firstName,
+        lastName,
+        phone,
+        dni,
         email
     );
 
+    if (holderNameChanged) {
+        accountClient.updateHolderName(
+            id,
+            authorization,
+            new AccountClient.UpdateHolderNameRequest(
+                firstName + " " + lastName
+            )
+        );
+    }
+
     return toResponse(user);
 }
+
+    private String valueOrCurrent(String value, String currentValue) {
+        return value == null ? currentValue : value;
+    }
 
     private UserResponse toResponse(User user) {
         Set<String> roles = user.getRoles()

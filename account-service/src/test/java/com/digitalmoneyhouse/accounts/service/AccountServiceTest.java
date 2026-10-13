@@ -231,6 +231,27 @@ void updatesAliasForTheAccountOwner() {
 }
 
 @Test
+void updatesAccountHolderNameForTheUser() {
+    UUID userId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+
+    when(accountRepository.findByUserId(userId))
+        .thenReturn(Optional.of(account));
+
+    var response = accountService.updateHolderName(
+        userId, "Ana María Pérez"
+    );
+
+    assertEquals("Ana María Pérez", response.holderName());
+    assertEquals("Ana María Pérez", account.getHolderName());
+}
+
+@Test
 void returnsActivityOrderedAndFilteredForTheAccountOwner() {
     UUID userId = UUID.randomUUID();
     UUID accountId = UUID.randomUUID();

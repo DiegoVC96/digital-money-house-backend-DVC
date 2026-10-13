@@ -7,8 +7,8 @@ Verificar que el usuario autenticado pueda consultar su cuenta y movimientos, ac
 ## Alcance
 
 - Dashboard: saldo disponible y últimos cinco movimientos.
-- Perfil: consulta y actualización de nombre, apellido, teléfono, DNI, email y contraseña.
-- Sincronización de email, nombre, apellido y contraseña con Keycloak.
+- Perfil: consulta y actualización parcial de nombre, apellido, teléfono, DNI, email y contraseña.
+- Sincronización de email, nombre, apellido y contraseña con Keycloak, y del titular de cuenta cuando cambia el nombre o apellido.
 - Inmutabilidad de CVU y saldo.
 - Tarjetas: alta, listado, detalle y eliminación.
 - Seguridad: solo el propietario o un administrador puede acceder a recursos de una cuenta.
@@ -55,5 +55,5 @@ Verificar que el usuario autenticado pueda consultar su cuenta y movimientos, ac
 
 - `AccountServiceTest`: cuenta, movimientos y actualización de alias.
 - `CardServiceTest`: alta segura, duplicados, control de acceso y cuenta inexistente.
-- `UserServiceTest`: actualización de todos los datos permitidos y propagación a identidad.
+- `UserServiceTest`: actualización parcial y propagación a identidad y titular de cuenta.
 - `AccountApiSmokeTest`: login, token OAuth2, Gateway y consulta de cuenta.

@@ -105,6 +105,20 @@ public class AccountService {
         return toResponse(account);
     }
 
+    public AccountResponse updateHolderName(
+        UUID userId,
+        String holderName
+    ) {
+        Account account = accountRepository.findByUserId(userId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Cuenta no encontrada")
+            );
+
+        account.updateHolderName(holderName);
+
+        return toResponse(account);
+    }
+
     @Transactional(readOnly = true)
     public List<TransactionResponse> getRecentTransactions(
         UUID accountId,

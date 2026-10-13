@@ -58,6 +58,13 @@ public final class AccountDtos {
     ) {
     }
 
+    public record UpdateHolderNameRequest(
+        @NotBlank
+        @Size(min = 2, max = 160)
+        String holderName
+    ) {
+    }
+
     public record CreateCardRequest(
         @NotBlank
         @Pattern(regexp = "\\d{13,19}")

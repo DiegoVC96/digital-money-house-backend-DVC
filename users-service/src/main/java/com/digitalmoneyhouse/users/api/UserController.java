@@ -72,8 +72,8 @@ public ResponseEntity<UserResponse> update(
     @Valid @RequestBody UpdateUserRequest request,
     @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
 ) {
-    return ResponseEntity
-        .status(HttpStatus.CREATED)
-        .body(userService.update(id, request, authorization));
+    return ResponseEntity.ok(
+        userService.update(id, request, authorization)
+    );
 }
 }

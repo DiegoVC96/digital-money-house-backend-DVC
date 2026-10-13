@@ -15,7 +15,6 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
 import com.digitalmoneyhouse.auth.domain.VerificationPurpose;
-import com.digitalmoneyhouse.auth.service.UpdateIdentityRequest;
 
 import java.util.Locale;
 import java.util.UUID;

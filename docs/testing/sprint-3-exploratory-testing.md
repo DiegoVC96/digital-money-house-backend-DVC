@@ -25,3 +25,10 @@ Las sesiones se organizan en recorridos de aproximadamente 30 minutos. Cada reco
 - El ingreso verifica que la tarjeta pertenezca a la cuenta antes de acreditar saldo.
 - La interfaz transmite el identificador de tarjeta; los últimos cuatro dígitos se usan sólo como información visual.
 - Los filtros se aplican en backend y el frontend restaura el listado completo con el botón Limpiar.
+
+## Evidencia de ejecución
+
+- 2026-10-13: `AccountServiceTest` ejecutó 17 casos y `CardServiceTest` 6 casos, sin fallos.
+- 2026-10-13: `AccountApiSmokeTest` ejecutó correctamente cuenta propia, actividad sin filtros, ingreso de `$1,00`, detalle de actividad, importe inválido y movimiento inexistente contra API Gateway.
+- 2026-10-13: el caso smoke de cuenta ajena quedó omitido por no contar con `SMOKE_OTHER_ACCOUNT_ID`; el rechazo de acceso ajeno permanece cubierto a nivel de servicio.
+- 2026-10-13: se verificó manualmente que una tarjeta vencida y una fecha con mes inválido retornan HTTP 400 con mensajes específicos, y que un `range` inválido enumera las alternativas admitidas.

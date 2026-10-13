@@ -21,6 +21,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.UUID;
 import java.util.HexFormat;
+import java.time.YearMonth;
 
 @Service
 @Transactional
@@ -47,6 +48,8 @@ public class CardService {
         if (!isValidCardNumber(number)) {
             throw new IllegalArgumentException("El número de tarjeta no es válido");
         }
+
+        validateExpiration(request.expiration());
 
         String fingerprint = fingerprint(number);
 
@@ -171,6 +174,24 @@ public class CardService {
         }
 
         return CardBrand.OTHER;
+    }
+
+    private void validateExpiration(String expiration) {
+        if (expiration == null || !expiration.matches("(0[1-9]|1[0-2])\\d{2}")) {
+            throw new IllegalArgumentException(
+                "La fecha de vencimiento debe tener formato MMYY, con un mes entre 01 y 12"
+            );
+        }
+
+        int month = Integer.parseInt(expiration.substring(0, 2));
+        int year = 2000 + Integer.parseInt(expiration.substring(2));
+        YearMonth expirationMonth = YearMonth.of(year, month);
+
+        if (expirationMonth.isBefore(YearMonth.now())) {
+            throw new IllegalArgumentException(
+                "La tarjeta está vencida; la fecha debe ser el mes actual o posterior"
+            );
+        }
     }
 
     private String fingerprint(String number) {

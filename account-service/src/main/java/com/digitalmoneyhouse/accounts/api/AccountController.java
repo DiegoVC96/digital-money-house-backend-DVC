@@ -10,6 +10,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -19,6 +20,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.RequestParam;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateHolderNameRequest;
 import org.springframework.web.bind.annotation.PatchMapping;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CardResponse;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateCardRequest;
@@ -87,6 +89,18 @@ public class AccountController {
         @Valid @RequestBody UpdateAccountRequest request
     ) {
         return accountService.update(accountId, request);
+    }
+
+    @PutMapping("/internal/users/{userId}/holder-name")
+    @PreAuthorize("""
+        #userId.toString() == authentication.name
+        or hasRole('ADMIN')
+    """)
+    public AccountResponse updateHolderName(
+        @PathVariable UUID userId,
+        @Valid @RequestBody UpdateHolderNameRequest request
+    ) {
+        return accountService.updateHolderName(userId, request.holderName());
     }
 
     @GetMapping("/{accountId}/transactions")

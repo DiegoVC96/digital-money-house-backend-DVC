@@ -31,6 +31,8 @@ import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 import java.security.SecureRandom;
@@ -231,6 +233,27 @@ void updatesAliasForTheAccountOwner() {
 }
 
 @Test
+void updatesAccountHolderNameForTheUser() {
+    UUID userId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+
+    when(accountRepository.findByUserId(userId))
+        .thenReturn(Optional.of(account));
+
+    var response = accountService.updateHolderName(
+        userId, "Ana María Pérez"
+    );
+
+    assertEquals("Ana María Pérez", response.holderName());
+    assertEquals("Ana María Pérez", account.getHolderName());
+}
+
+@Test
 void returnsActivityOrderedAndFilteredForTheAccountOwner() {
     UUID userId = UUID.randomUUID();
     UUID accountId = UUID.randomUUID();
@@ -268,6 +291,93 @@ void returnsActivityOrderedAndFilteredForTheAccountOwner() {
 
     assertEquals(1, response.size());
     assertEquals(TransactionType.DEPOSIT, response.getFirst().type());
+}
+
+@Test
+void returnsAllActivityWhenNoFiltersAreProvided() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    Transaction deposit = new Transaction(
+        account,
+        TransactionType.DEPOSIT,
+        new BigDecimal("2500.00"),
+        "Ingreso de dinero"
+    );
+    Transaction expense = new Transaction(
+        account,
+        TransactionType.TRANSFER_OUT,
+        new BigDecimal("500.00"),
+        "Transferencia enviada"
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(transactionRepository.findByAccount_IdOrderByCreatedAtDesc(accountId))
+        .thenReturn(List.of(deposit, expense));
+
+    var response = accountService.getActivity(
+        accountId, null, null, null, null
+    );
+
+    assertEquals(2, response.size());
+    assertEquals(TransactionType.DEPOSIT, response.getFirst().type());
+}
+
+@Test
+void rejectsActivityForAnotherUser() {
+    UUID accountOwnerId = UUID.randomUUID();
+    UUID otherUserId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account account = new Account(
+        accountOwnerId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+
+    authenticateAs(otherUserId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+
+    assertThrows(
+        AccessDeniedException.class,
+        () -> accountService.getActivity(accountId, null, null, null, null)
+    );
+    verifyNoInteractions(transactionRepository);
+}
+
+@Test
+void returnsActivityDetailForTheAccountOwner() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    UUID transactionId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    Transaction transaction = new Transaction(
+        account,
+        TransactionType.DEPOSIT,
+        new BigDecimal("1500.00"),
+        "Ingreso de dinero"
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(transactionRepository.findByIdAndAccount_Id(transactionId, accountId))
+        .thenReturn(Optional.of(transaction));
+
+    var response = accountService.getActivityDetail(accountId, transactionId);
+
+    assertEquals(TransactionType.DEPOSIT, response.type());
+    assertEquals("Ingreso de dinero", response.description());
 }
 
 @Test
@@ -329,6 +439,81 @@ void depositsMoneyWithAnAssociatedCard() {
     assertEquals(0, response.amount().compareTo(new BigDecimal("1250.00")));
     assertEquals(0, account.getBalance().compareTo(new BigDecimal("1250.00")));
     assertTrue(response.description().contains("1111"));
+}
+
+@Test
+void rejectsDepositWithAnExpiredCard() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    UUID cardId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    PaymentCard card = new PaymentCard(
+        account,
+        "fingerprint",
+        "1111",
+        CardBrand.VISA,
+        "ANA PEREZ",
+        YearMonth.now().minusMonths(1)
+            .format(DateTimeFormatter.ofPattern("MMyy"))
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(paymentCardRepository.findByIdAndAccount_Id(cardId, accountId))
+        .thenReturn(Optional.of(card));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.deposit(
+            accountId,
+            new CreateDepositRequest(cardId, new BigDecimal("1250.00"))
+        )
+    );
+
+    verify(transactionRepository, never()).save(any(Transaction.class));
+}
+
+@Test
+void rejectsDepositWithAnInvalidAmountWithoutCreatingATransaction() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    UUID cardId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    PaymentCard card = new PaymentCard(
+        account,
+        "fingerprint",
+        "1111",
+        CardBrand.VISA,
+        "ANA PEREZ",
+        YearMonth.now().plusMonths(1)
+            .format(DateTimeFormatter.ofPattern("MMyy"))
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(paymentCardRepository.findByIdAndAccount_Id(cardId, accountId))
+        .thenReturn(Optional.of(card));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.deposit(
+            accountId,
+            new CreateDepositRequest(cardId, BigDecimal.ZERO)
+        )
+    );
+
+    assertEquals(0, account.getBalance().compareTo(BigDecimal.ZERO));
+    verify(transactionRepository, never()).save(any(Transaction.class));
 }
 
 @Test

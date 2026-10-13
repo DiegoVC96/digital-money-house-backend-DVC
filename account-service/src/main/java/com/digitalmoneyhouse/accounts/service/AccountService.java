@@ -105,6 +105,20 @@ public class AccountService {
         return toResponse(account);
     }
 
+    public AccountResponse updateHolderName(
+        UUID userId,
+        String holderName
+    ) {
+        Account account = accountRepository.findByUserId(userId)
+            .orElseThrow(() ->
+                new ResourceNotFoundException("Cuenta no encontrada")
+            );
+
+        account.updateHolderName(holderName);
+
+        return toResponse(account);
+    }
+
     @Transactional(readOnly = true)
     public List<TransactionResponse> getRecentTransactions(
         UUID accountId,
@@ -188,6 +202,12 @@ public class AccountService {
             .orElseThrow(() ->
                 new ResourceNotFoundException("Tarjeta no encontrada")
             );
+
+        if (card.isExpired()) {
+            throw new IllegalArgumentException(
+                "La tarjeta está vencida y no puede usarse para ingresar dinero"
+            );
+        }
 
         account.credit(request.amount());
 

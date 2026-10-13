@@ -15,6 +15,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.digitalmoneyhouse.users.api.UserDtos.UpdateUserRequest;
 import com.digitalmoneyhouse.users.api.UserDtos.UserResponse;
 import com.digitalmoneyhouse.users.client.IdentityClient;
+import com.digitalmoneyhouse.users.client.AccountClient;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -37,6 +38,9 @@ class UserServiceTest {
 
     @Mock
     private IdentityClient identityClient;
+
+    @Mock
+    private AccountClient accountClient;
 
     @InjectMocks
     private UserService userService;
@@ -145,6 +149,44 @@ class UserServiceTest {
             eq(id),
             eq("Bearer token-de-prueba"),
             any(IdentityClient.UpdateIdentityRequest.class)
+        );
+        verify(accountClient).updateHolderName(
+            eq(id),
+            eq("Bearer token-de-prueba"),
+            any(AccountClient.UpdateHolderNameRequest.class)
+        );
+    }
+
+    @Test
+    void updatesOnlyProvidedFieldsAndSynchronizesTheAccountHolderName() {
+        UUID id = UUID.randomUUID();
+        User user = new User(
+            id,
+            "Ana",
+            "Pérez",
+            "1122334455",
+            "12345678",
+            "ana@example.com",
+            new Role("USER")
+        );
+        UpdateUserRequest request = new UpdateUserRequest(
+            "Ana María", null, null, null, null, null
+        );
+
+        when(userRepository.findById(id)).thenReturn(Optional.of(user));
+
+        UserResponse response = userService.update(
+            id, request, "Bearer token-de-prueba"
+        );
+
+        assertEquals("Ana María", response.firstName());
+        assertEquals("Pérez", response.lastName());
+        assertEquals("ana@example.com", response.email());
+        assertEquals("12345678", response.dni());
+        verify(accountClient).updateHolderName(
+            eq(id),
+            eq("Bearer token-de-prueba"),
+            eq(new AccountClient.UpdateHolderNameRequest("Ana María Pérez"))
         );
     }
 }

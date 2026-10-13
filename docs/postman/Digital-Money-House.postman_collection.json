@@ -145,18 +145,16 @@
           "response": []
         },
         {
-          "name": "Actualizar perfil completo",
+          "name": "Actualizar perfil parcial",
           "event": [
             {
               "listen": "test",
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Perfil actualizado', () => pm.response.to.have.status(201));",
-                  "pm.test('Email actualizado', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('updatedEmail')));",
-                  "pm.test('DNI actualizado', () => pm.expect(pm.response.json().dni).to.eql(pm.collectionVariables.get('updatedDni')));",
-                  "pm.collectionVariables.set('email', pm.response.json().email);",
-                  "pm.collectionVariables.set('password', pm.collectionVariables.get('updatedPassword'));"
+                  "pm.test('Perfil actualizado', () => pm.response.to.have.status(200));",
+                  "pm.test('Nombre actualizado', () => pm.expect(pm.response.json().firstName).to.eql(pm.collectionVariables.get('updatedFirstName')));",
+                  "pm.test('Conserva el email no enviado', () => pm.expect(pm.response.json().email).to.eql(pm.collectionVariables.get('email')));"
                 ]
               }
             }
@@ -181,7 +179,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"firstName\": \"{{updatedFirstName}}\",\n  \"lastName\": \"{{updatedLastName}}\",\n  \"phone\": \"{{updatedPhone}}\",\n  \"dni\": \"{{updatedDni}}\",\n  \"email\": \"{{updatedEmail}}\",\n  \"password\": \"{{updatedPassword}}\"\n}",
+              "raw": "{\n  \"firstName\": \"{{updatedFirstName}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -490,6 +488,7 @@
         {
           "name": "Listar actividad filtrada",
           "request": {
+            "description": "Valores permitidos para range: ZERO_TO_1000, FROM_1000_TO_5000, FROM_5000_TO_20000, FROM_20000_TO_100000 y OVER_100000.",
             "auth": {
               "type": "bearer",
               "bearer": [

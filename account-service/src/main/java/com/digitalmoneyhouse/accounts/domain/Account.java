@@ -71,6 +71,10 @@ public class Account {
         this.alias = alias;
     }
 
+    public void updateHolderName(String holderName) {
+        this.holderName = holderName;
+    }
+
     public void credit(BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException(

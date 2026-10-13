@@ -14,6 +14,9 @@
 | S3-10 | Tarjeta ajena o inexistente | Intentar un ingreso con una tarjeta no asociada a la cuenta. | HTTP 404 con `Tarjeta no encontrada`. |
 | S3-11 | FrontEnd: ingreso | Seleccionar tarjeta, ingresar importe y confirmar. | Se actualiza el saldo y aparece el movimiento en Actividad. |
 | S3-12 | FrontEnd: filtros | Aplicar tipo, rango y período desde Actividad. | La lista se actualiza y Limpiar restablece todos los movimientos. |
+| S3-13 | Fecha vencida | Intentar asociar una tarjeta con vencimiento anterior al mes actual. | HTTP 400; mensaje indicando que la tarjeta está vencida. |
+| S3-14 | Fecha inválida | Intentar asociar una tarjeta con mes fuera de `01` a `12`. | HTTP 400; campo `expiration` y formato `MMYY` informado. |
+| S3-15 | Rango inválido | Consultar actividad con `range` no reconocido. | HTTP 400; enumera los valores de rango permitidos. |
 
 ## Ejecución registrada
 
@@ -22,3 +25,7 @@
 - S3-08: aprobado — depósito de `$1.500` acreditado con tarjeta terminada en `1111`; saldo actualizado.
 - S3-11: aprobado — depósito adicional de `$500` realizado desde FrontEnd; saldo final `$2.000`.
 - S3-12: aprobado — filtros por tipo, rango y fecha del día verificados visualmente.
+- S3-13 y S3-14: aprobados — tarjetas vencida e inválida rechazadas con mensajes específicos.
+- S3-15: aprobado — `range=INVALIDO` rechazado e informa todas las alternativas permitidas.
+- S3-01, S3-02, S3-03, S3-08 y S3-09: aprobados por `AccountApiSmokeTest` contra Gateway el 2026-10-13. El smoke autenticó, consultó actividad sin filtros, acreditó `$1,00`, obtuvo el detalle y rechazó importe cero.
+- S3-04: cubierto por `AccountServiceTest` (acceso de un usuario ajeno rechazado). El equivalente smoke es opcional y se habilita con `SMOKE_OTHER_ACCOUNT_ID`.

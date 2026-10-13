@@ -38,13 +38,14 @@ Verificar que una persona usuaria pueda consultar su actividad completa, ver el 
 
 ## Evidencia automatizada
 
-- `AccountServiceTest` cubre lectura de actividad, control de acceso, filtro de dirección, filtro por importe, período inválido, ingreso válido y tarjeta ajena.
-- `CardServiceTest` mantiene la cobertura de la gestión de tarjetas del Sprint 2.
-- `AccountApiSmokeTest` continúa verificando login, Gateway y consulta de la cuenta autenticada cuando se configuran las variables `SMOKE_*`.
+- `AccountServiceTest` cubre lectura de actividad, control de acceso, filtro de dirección, filtro por importe, período inválido, ingreso válido, tarjeta ajena y tarjeta vencida.
+- `CardServiceTest` cubre además el rechazo de tarjetas vencidas al asociarlas.
+- `AccountApiSmokeTest` verifica login, Gateway, actividad sin filtros, ingreso, detalle, importe inválido y movimiento inexistente; agrega el caso HTTP 403 si se configura `SMOKE_OTHER_ACCOUNT_ID`.
 
 ## Riesgos
 
 - Un token de Keycloak vencido devuelve `401`; se debe iniciar sesión nuevamente.
 - Un servicio todavía no registrado en Eureka puede provocar `503` temporal en Gateway.
 - La tarjeta debe pertenecer a la cuenta autenticada; una tarjeta ajena no puede acreditar saldo.
+- La fecha de vencimiento usa formato `MMYY`; debe representar el mes actual o uno posterior.
 - Los filtros de rango incluyen el límite superior para facilitar la interpretación de los importes mostrados.

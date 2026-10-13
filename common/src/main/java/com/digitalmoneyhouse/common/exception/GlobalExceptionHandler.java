@@ -14,6 +14,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -69,9 +71,50 @@ public class GlobalExceptionHandler {
     ) {
         return error(
             HttpStatus.BAD_REQUEST,
-            "Los datos enviados no son válidos",
+            validationMessage(exception),
             request
         );
+    }
+
+    private String validationMessage(Exception exception) {
+        if (exception instanceof MethodArgumentNotValidException invalid) {
+            return invalid.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .distinct()
+                .collect(Collectors.joining("; "));
+        }
+
+        if (exception instanceof ConstraintViolationException invalid) {
+            return invalid.getConstraintViolations().stream()
+                .map(error -> error.getPropertyPath() + ": " + error.getMessage())
+                .collect(Collectors.joining("; "));
+        }
+
+        if (exception instanceof MethodArgumentTypeMismatchException mismatch) {
+            String message = "El campo '" + mismatch.getName()
+                + "' tiene un valor inválido";
+            Class<?> requiredType = mismatch.getRequiredType();
+
+            if (requiredType != null && requiredType.isEnum()) {
+                String values = Arrays.stream(requiredType.getEnumConstants())
+                    .map(Object::toString)
+                    .collect(Collectors.joining(", "));
+                message += ". Valores permitidos: " + values;
+            }
+
+            return message;
+        }
+
+        if (exception instanceof IllegalArgumentException invalid
+            && invalid.getMessage() != null) {
+            return invalid.getMessage();
+        }
+
+        if (exception instanceof HttpMessageNotReadableException) {
+            return "El cuerpo debe contener JSON válido y con el formato esperado";
+        }
+
+        return "Los datos enviados no son válidos";
     }
 
     @ExceptionHandler(AccessDeniedException.class)

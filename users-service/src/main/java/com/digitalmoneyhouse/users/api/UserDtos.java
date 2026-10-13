@@ -51,29 +51,33 @@ public final class UserDtos {
     }
 
     public record UpdateUserRequest(
-        @NotBlank
         @Size(min = 2, max = 80)
         String firstName,
 
-        @NotBlank
         @Size(min = 2, max = 80)
         String lastName,
 
-        @NotBlank
         @Pattern(regexp = "\\d{8,15}")
         String phone,
 
-        @NotBlank
         @Pattern(regexp = "\\d{7,8}")
         String dni,
 
-        @NotBlank
+        @Size(min = 1, max = 150)
         @Email
         String email,
 
         @Size(min = 8, max = 72)
         String password
     ) {
+        public boolean isEmpty() {
+            return firstName == null
+                && lastName == null
+                && phone == null
+                && dni == null
+                && email == null
+                && password == null;
+        }
     }
 
     public record AvailabilityResponse(

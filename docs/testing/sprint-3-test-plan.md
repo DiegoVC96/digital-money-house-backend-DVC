@@ -40,7 +40,7 @@ Verificar que una persona usuaria pueda consultar su actividad completa, ver el 
 
 - `AccountServiceTest` cubre lectura de actividad, control de acceso, filtro de dirección, filtro por importe, período inválido, ingreso válido, tarjeta ajena y tarjeta vencida.
 - `CardServiceTest` cubre además el rechazo de tarjetas vencidas al asociarlas.
-- `AccountApiSmokeTest` continúa verificando login, Gateway y consulta de la cuenta autenticada cuando se configuran las variables `SMOKE_*`.
+- `AccountApiSmokeTest` verifica login, Gateway, actividad sin filtros, ingreso, detalle, importe inválido y movimiento inexistente; agrega el caso HTTP 403 si se configura `SMOKE_OTHER_ACCOUNT_ID`.
 
 ## Riesgos
 

@@ -27,3 +27,5 @@
 - S3-12: aprobado — filtros por tipo, rango y fecha del día verificados visualmente.
 - S3-13 y S3-14: aprobados — tarjetas vencida e inválida rechazadas con mensajes específicos.
 - S3-15: aprobado — `range=INVALIDO` rechazado e informa todas las alternativas permitidas.
+- S3-01, S3-02, S3-03, S3-08 y S3-09: aprobados por `AccountApiSmokeTest` contra Gateway el 2026-10-13. El smoke autenticó, consultó actividad sin filtros, acreditó `$1,00`, obtuvo el detalle y rechazó importe cero.
+- S3-04: cubierto por `AccountServiceTest` (acceso de un usuario ajeno rechazado). El equivalente smoke es opcional y se habilita con `SMOKE_OTHER_ACCOUNT_ID`.

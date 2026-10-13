@@ -161,6 +161,24 @@ class CardServiceTest {
     }
 
     @Test
+    void returnsNotFoundWhenCardDoesNotExist() {
+        UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
+        UUID cardId = UUID.randomUUID();
+
+        authenticateAs(userId);
+        when(accountRepository.findById(accountId))
+            .thenReturn(Optional.of(accountFor(userId)));
+        when(paymentCardRepository.findByIdAndAccount_Id(cardId, accountId))
+            .thenReturn(Optional.empty());
+
+        assertThrows(
+            ResourceNotFoundException.class,
+            () -> cardService.findById(accountId, cardId)
+        );
+    }
+
+    @Test
     void rejectsCardAccessForAnotherUser() {
         UUID ownerId = UUID.randomUUID();
         UUID otherUserId = UUID.randomUUID();

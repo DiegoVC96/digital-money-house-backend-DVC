@@ -184,6 +184,9 @@ Con los servicios activos, ejecutar:
 $env:SMOKE_BASE_URL = "http://localhost:8080"
 $env:SMOKE_EMAIL = "valentina.reproducible@example.com"
 $env:SMOKE_PASSWORD = "ClaveSegura123"
+$env:SMOKE_CARD_ID = "UUID-de-una-tarjeta-vigente-asociada-a-la-cuenta"
+# Opcional: habilita el caso de seguridad HTTP 403 del smoke.
+$env:SMOKE_OTHER_ACCOUNT_ID = "UUID-de-una-cuenta-de-otro-usuario"
 
 mvn test -pl account-service -Dtest=AccountApiSmokeTest
 

@@ -31,6 +31,8 @@ import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.UUID;
 import java.security.SecureRandom;
@@ -350,6 +352,43 @@ void depositsMoneyWithAnAssociatedCard() {
     assertEquals(0, response.amount().compareTo(new BigDecimal("1250.00")));
     assertEquals(0, account.getBalance().compareTo(new BigDecimal("1250.00")));
     assertTrue(response.description().contains("1111"));
+}
+
+@Test
+void rejectsDepositWithAnExpiredCard() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    UUID cardId = UUID.randomUUID();
+    Account account = new Account(
+        userId,
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    PaymentCard card = new PaymentCard(
+        account,
+        "fingerprint",
+        "1111",
+        CardBrand.VISA,
+        "ANA PEREZ",
+        YearMonth.now().minusMonths(1)
+            .format(DateTimeFormatter.ofPattern("MMyy"))
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(paymentCardRepository.findByIdAndAccount_Id(cardId, accountId))
+        .thenReturn(Optional.of(card));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.deposit(
+            accountId,
+            new CreateDepositRequest(cardId, new BigDecimal("1250.00"))
+        )
+    );
+
+    verify(transactionRepository, never()).save(any(Transaction.class));
 }
 
 @Test

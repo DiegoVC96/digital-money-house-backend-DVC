@@ -203,6 +203,12 @@ public class AccountService {
                 new ResourceNotFoundException("Tarjeta no encontrada")
             );
 
+        if (card.isExpired()) {
+            throw new IllegalArgumentException(
+                "La tarjeta está vencida y no puede usarse para ingresar dinero"
+            );
+        }
+
         account.credit(request.amount());
 
         Transaction transaction = new Transaction(

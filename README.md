@@ -191,6 +191,7 @@ mvn test -pl account-service -Dtest=AccountApiSmokeTest
 ### Endpoints del Sprint 3
 
 - `GET /api/accounts/{accountId}/activity`: lista la actividad de la cuenta, con filtros opcionales `from`, `to`, `type=INCOME|EXPENSE` y `range`.
+  Los valores admitidos para `range` son: `ZERO_TO_1000` (0 a 1.000), `FROM_1000_TO_5000` (1.000 a 5.000), `FROM_5000_TO_20000` (5.000 a 20.000), `FROM_20000_TO_100000` (20.000 a 100.000) y `OVER_100000` (más de 100.000).
 - `GET /api/accounts/{accountId}/activity/{transactionId}`: obtiene el detalle de un movimiento.
 - `POST /api/accounts/{accountId}/transferences`: acredita saldo desde una tarjeta propia. Recibe `cardId` y `amount`; devuelve HTTP 201.
 

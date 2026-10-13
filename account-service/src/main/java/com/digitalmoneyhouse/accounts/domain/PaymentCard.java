@@ -13,6 +13,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.util.UUID;
+import java.time.YearMonth;
 
 @Entity
 @Table(name = "payment_cards")
@@ -83,5 +84,16 @@ public class PaymentCard {
 
     public String getExpiration() {
         return expiration;
+    }
+
+    public boolean isExpired() {
+        if (expiration == null || !expiration.matches("(0[1-9]|1[0-2])\\d{2}")) {
+            return true;
+        }
+
+        int month = Integer.parseInt(expiration.substring(0, 2));
+        int year = 2000 + Integer.parseInt(expiration.substring(2));
+
+        return YearMonth.of(year, month).isBefore(YearMonth.now());
     }
 }

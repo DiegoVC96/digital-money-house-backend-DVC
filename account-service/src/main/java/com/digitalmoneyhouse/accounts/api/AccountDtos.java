@@ -75,7 +75,10 @@ public final class AccountDtos {
         String name,
 
         @NotBlank
-        @Pattern(regexp = "\\d{4}")
+        @Pattern(
+            regexp = "(0[1-9]|1[0-2])\\d{2}",
+            message = "debe tener formato MMYY, con un mes entre 01 y 12"
+        )
         String expiration,
 
         @NotBlank

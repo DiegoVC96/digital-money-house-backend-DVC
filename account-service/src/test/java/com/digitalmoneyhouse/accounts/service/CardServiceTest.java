@@ -22,6 +22,8 @@ import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -105,6 +107,37 @@ class CardServiceTest {
             )
         );
 
+        verify(paymentCardRepository, never()).save(any(PaymentCard.class));
+    }
+
+    @Test
+    void rejectsAnExpiredCardWhenCreatingIt() {
+        UUID userId = UUID.randomUUID();
+        UUID accountId = UUID.randomUUID();
+        String expired = YearMonth.now().minusMonths(1)
+            .format(DateTimeFormatter.ofPattern("MMyy"));
+
+        authenticateAs(userId);
+        when(accountRepository.findById(accountId))
+            .thenReturn(Optional.of(accountFor(userId)));
+
+        IllegalArgumentException exception = assertThrows(
+            IllegalArgumentException.class,
+            () -> cardService.create(
+                accountId,
+                new CreateCardRequest(
+                    "4111111111111111",
+                    "VALENTINA PRUEBA",
+                    expired,
+                    "123"
+                )
+            )
+        );
+
+        assertEquals(
+            "La tarjeta está vencida; la fecha debe ser el mes actual o posterior",
+            exception.getMessage()
+        );
         verify(paymentCardRepository, never()).save(any(PaymentCard.class));
     }
 

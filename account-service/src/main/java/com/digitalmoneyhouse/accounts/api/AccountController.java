@@ -25,6 +25,8 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CardResponse;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateCardRequest;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateDepositRequest;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateTransferenceRequest;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.RecipientResponse;
 import com.digitalmoneyhouse.accounts.domain.ActivityAmountRange;
 import com.digitalmoneyhouse.accounts.domain.ActivityDirection;
 import com.digitalmoneyhouse.accounts.service.CardService;
@@ -146,13 +148,38 @@ public class AccountController {
 
     @PostMapping("/{accountId}/transferences")
     @PreAuthorize("isAuthenticated()")
-    public ResponseEntity<TransactionResponse> deposit(
+    public ResponseEntity<TransactionResponse> createTransference(
         @PathVariable UUID accountId,
-        @Valid @RequestBody CreateDepositRequest request
+        @Valid @RequestBody CreateTransferenceRequest request
     ) {
-        return ResponseEntity
-            .status(HttpStatus.CREATED)
-            .body(accountService.deposit(accountId, request));
+        if (request.isDeposit()) {
+            return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(accountService.deposit(
+                    accountId,
+                    new CreateDepositRequest(request.cardId(), request.amount())
+                ));
+        }
+
+        if (request.isTransfer()) {
+            return ResponseEntity.ok(accountService.transfer(
+                accountId,
+                request.destination(),
+                request.amount()
+            ));
+        }
+
+        throw new IllegalArgumentException(
+            "Debe enviar cardId para ingresar dinero o destination para transferir, pero no ambos"
+        );
+    }
+
+    @GetMapping("/{accountId}/transferences")
+    @PreAuthorize("isAuthenticated()")
+    public List<RecipientResponse> getRecentRecipients(
+        @PathVariable UUID accountId
+    ) {
+        return accountService.getRecentRecipients(accountId);
     }
 
     @PostMapping("/{accountId}/cards")

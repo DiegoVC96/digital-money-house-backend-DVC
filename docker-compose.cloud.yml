@@ -1,0 +1,186 @@
+name: digital-money-house-cloud
+
+services:
+  mysql-users:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: users_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definir MYSQL_ROOT_PASSWORD en .env}
+    volumes:
+      - mysql-users-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  mysql-auth:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: auth_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definir MYSQL_ROOT_PASSWORD en .env}
+    volumes:
+      - mysql-auth-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  mysql-accounts:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: accounts_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definir MYSQL_ROOT_PASSWORD en .env}
+    volumes:
+      - mysql-accounts-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  mailhog:
+    image: mailhog/mailhog:v1.0.1
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    command: start-dev --import-realm
+    environment:
+      KC_HEALTH_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}
+      KEYCLOAK_AUTH_SERVICE_SECRET: ${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}
+    volumes:
+      - ./keycloak/import:/opt/keycloak/data/import:ro
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q 200 <&3'"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  keycloak-bootstrap:
+    image: quay.io/keycloak/keycloak:26.0
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "/opt/keycloak/bootstrap/init.sh"]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: digital-money-house
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}
+      KEYCLOAK_AUTH_SERVICE_SECRET: ${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}
+    volumes:
+      - ./keycloak/bootstrap:/opt/keycloak/bootstrap:ro
+
+  discovery-server:
+    build:
+      context: .
+      args: { MODULE: discovery-server }
+    environment:
+      SERVER_PORT: 8761
+    healthcheck: &spring-healthcheck
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/$${SERVER_PORT} && echo -e \"GET /actuator/health HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q UP <&3'"]
+      interval: 15s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  auth-service:
+    build:
+      context: .
+      args: { MODULE: auth-service }
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-auth:3306/auth_db
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      SPRING_MAIL_HOST: mailhog
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: auth-service
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_AUTH_SERVICE_SECRET: ${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}
+    depends_on:
+      mysql-auth: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      keycloak-bootstrap: { condition: service_completed_successfully }
+    healthcheck:
+      <<: *spring-healthcheck
+
+  users-service:
+    build:
+      context: .
+      args: { MODULE: users-service }
+    environment:
+      SERVER_PORT: 8082
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-users:3306/users_db
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/digital-money-house
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: users-service
+    depends_on:
+      mysql-users: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      keycloak-bootstrap: { condition: service_completed_successfully }
+    healthcheck:
+      <<: *spring-healthcheck
+
+  account-service:
+    build:
+      context: .
+      args: { MODULE: account-service }
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-accounts:3306/accounts_db
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/digital-money-house
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: account-service
+    depends_on:
+      mysql-accounts: { condition: service_healthy }
+      discovery-server: { condition: service_healthy }
+      keycloak-bootstrap: { condition: service_completed_successfully }
+    healthcheck:
+      <<: *spring-healthcheck
+
+  api-gateway:
+    build:
+      context: .
+      args: { MODULE: api-gateway }
+    environment:
+      SERVER_PORT: 8080
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/digital-money-house
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
+      EUREKA_INSTANCE_HOSTNAME: api-gateway
+    depends_on:
+      discovery-server: { condition: service_healthy }
+      auth-service: { condition: service_healthy }
+      users-service: { condition: service_healthy }
+      account-service: { condition: service_healthy }
+    healthcheck:
+      <<: *spring-healthcheck
+
+  frontend:
+    build:
+      context: ./FrontEnd
+      args:
+        REACT_APP_API_BASE_URL: /api
+    depends_on:
+      api-gateway: { condition: service_healthy }
+    ports:
+      - "${FRONTEND_PORT:-80}:80"
+
+volumes:
+  mysql-users-data:
+    name: dmh-cloud-mysql-users-data
+  mysql-auth-data:
+    name: dmh-cloud-mysql-auth-data
+  mysql-accounts-data:
+    name: dmh-cloud-mysql-accounts-data

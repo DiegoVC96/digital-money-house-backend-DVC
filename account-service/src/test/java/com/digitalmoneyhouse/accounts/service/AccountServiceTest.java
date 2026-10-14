@@ -14,6 +14,7 @@ import com.digitalmoneyhouse.accounts.domain.Transaction;
 import com.digitalmoneyhouse.accounts.domain.TransactionType;
 import com.digitalmoneyhouse.accounts.repository.TransactionRepository;
 import com.digitalmoneyhouse.accounts.repository.PaymentCardRepository;
+import com.digitalmoneyhouse.accounts.repository.MoneyTransferRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
@@ -25,9 +26,11 @@ import com.digitalmoneyhouse.accounts.api.AccountDtos.UpdateAccountRequest;
 import com.digitalmoneyhouse.accounts.domain.ActivityDirection;
 import com.digitalmoneyhouse.accounts.domain.ActivityAmountRange;
 import com.digitalmoneyhouse.accounts.domain.PaymentCard;
+import com.digitalmoneyhouse.accounts.domain.MoneyTransfer;
 import com.digitalmoneyhouse.accounts.domain.CardBrand;
 import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateDepositRequest;
 import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
+import com.digitalmoneyhouse.common.exception.InsufficientFundsException;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -56,6 +59,9 @@ class AccountServiceTest {
 
     @Mock
     private PaymentCardRepository paymentCardRepository;
+
+    @Mock
+    private MoneyTransferRepository moneyTransferRepository;
 
     @InjectMocks
     private AccountService accountService;
@@ -542,6 +548,135 @@ void rejectsDepositWithCardFromAnotherAccount() {
     );
 
     verify(transactionRepository, never()).save(any(Transaction.class));
+}
+
+@Test
+void transfersMoneyBetweenAccountsAndRegistersBothMovements() {
+    UUID sourceUserId = UUID.randomUUID();
+    UUID sourceAccountId = UUID.randomUUID();
+    Account source = new Account(
+        sourceUserId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    source.credit(new BigDecimal("1000.00"));
+    Account destination = new Account(
+        UUID.randomUUID(), "9876543210987654321098", "mar.cielo.brisa", "Bruno Díaz"
+    );
+
+    authenticateAs(sourceUserId);
+    when(accountRepository.findById(sourceAccountId)).thenReturn(Optional.of(source));
+    when(accountRepository.findByAlias("mar.cielo.brisa"))
+        .thenReturn(Optional.of(destination));
+    when(transactionRepository.save(any(Transaction.class)))
+        .thenAnswer(invocation -> invocation.getArgument(0));
+
+    var response = accountService.transfer(
+        sourceAccountId, "mar.cielo.brisa", new BigDecimal("250.00")
+    );
+
+    assertEquals(TransactionType.TRANSFER_OUT, response.type());
+    assertEquals(0, source.getBalance().compareTo(new BigDecimal("750.00")));
+    assertEquals(0, destination.getBalance().compareTo(new BigDecimal("250.00")));
+    verify(transactionRepository, times(2)).save(any(Transaction.class));
+    verify(moneyTransferRepository).save(any());
+}
+
+@Test
+void rejectsTransferWhenDestinationDoesNotExist() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account source = new Account(
+        userId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    source.credit(new BigDecimal("1000.00"));
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(source));
+    when(accountRepository.findByAlias("mar.cielo.brisa"))
+        .thenReturn(Optional.empty());
+
+    IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.transfer(
+            accountId, "mar.cielo.brisa", new BigDecimal("100.00")
+        )
+    );
+
+    assertEquals("La cuenta de destino no existe", exception.getMessage());
+    assertEquals(0, source.getBalance().compareTo(new BigDecimal("1000.00")));
+}
+
+@Test
+void rejectsTransferWhenBalanceIsInsufficient() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account source = new Account(
+        userId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    source.credit(new BigDecimal("100.00"));
+    Account destination = new Account(
+        UUID.randomUUID(), "9876543210987654321098", "mar.cielo.brisa", "Bruno Díaz"
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(source));
+    when(accountRepository.findByAlias("mar.cielo.brisa"))
+        .thenReturn(Optional.of(destination));
+
+    assertThrows(
+        InsufficientFundsException.class,
+        () -> accountService.transfer(
+            accountId, "mar.cielo.brisa", new BigDecimal("101.00")
+        )
+    );
+
+    assertEquals(0, source.getBalance().compareTo(new BigDecimal("100.00")));
+    assertEquals(0, destination.getBalance().compareTo(BigDecimal.ZERO));
+    verifyNoInteractions(transactionRepository, moneyTransferRepository);
+}
+
+@Test
+void returnsRecentRecipientsForTheAccountOwner() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account source = new Account(
+        userId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    Account destination = new Account(
+        UUID.randomUUID(), "9876543210987654321098", "mar.cielo.brisa", "Bruno Díaz"
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(source));
+    when(moneyTransferRepository.findBySourceAccount_IdOrderByCreatedAtDesc(accountId))
+        .thenReturn(List.of(new MoneyTransfer(
+            source, destination, new BigDecimal("100.00")
+        )));
+
+    var recipients = accountService.getRecentRecipients(accountId);
+
+    assertEquals(1, recipients.size());
+    assertEquals("mar.cielo.brisa", recipients.getFirst().alias());
+    assertEquals("Bruno Díaz", recipients.getFirst().holderName());
+}
+
+@Test
+void rejectsRecipientsFromAnotherAccount() {
+    UUID ownerId = UUID.randomUUID();
+    UUID otherUserId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account account = new Account(
+        ownerId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+
+    authenticateAs(otherUserId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+
+    assertThrows(
+        AccessDeniedException.class,
+        () -> accountService.getRecentRecipients(accountId)
+    );
+
+    verifyNoInteractions(moneyTransferRepository);
 }
 
 @Test

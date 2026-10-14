@@ -1,121 +1,115 @@
-# Digital Money House — Sprints 1 a 4
+# Digital Money House
 
-Proyecto full-stack de billetera digital con microservicios Spring Boot, Keycloak y React.
+Digital Money House es una billetera digital desarrollada con arquitectura de microservicios. Permite registrar y autenticar usuarios, administrar perfiles, consultar cuentas con CVU y alias, asociar tarjetas, ingresar dinero, revisar movimientos y transferir saldo a otras cuentas. También genera comprobantes PDF de las operaciones.
 
-## Estructura
+## Tecnologías utilizadas
 
-- `discovery-server`: Eureka Server, puerto `8761`.
-- `api-gateway`: punto de entrada, puerto `8080`.
-- `auth-service`: registro, login, logout, recuperación y verificación de email, puerto `8081`.
-- `users-service`: perfiles de usuario, puerto `8082`.
-- `account-service`: cuenta digital, CVU y alias, puerto `8083`.
-- `FrontEnd`: aplicación React, puerto `3000`.
-- `keycloak/import`: definición reproducible del realm.
-- `keycloak/bootstrap`: configuración automática del secreto del cliente técnico.
-- `docs/testing`: plan, casos y evidencias de pruebas.
+- Java 21, Spring Boot 3.3 y Spring Cloud 2023
+- Spring Cloud Netflix Eureka, Gateway y OpenFeign
+- MySQL 8.4, Spring Data JPA e Hibernate
+- Keycloak 26, OAuth2/OpenID Connect y JWT
+- React 18, TypeScript, Material UI y Tailwind CSS
+- Docker y Docker Compose
+- JUnit 5, Mockito, RestAssured y Postman
+- Git, GitLab CI y GitHub
 
-## Requisitos
+## Arquitectura
 
-- Java 21
-- Maven 3.9+
-- Docker Desktop
-- Node.js y npm
+El sistema separa las responsabilidades de autenticación, usuarios y cuentas. El Gateway es el único punto de entrada de las APIs y los servicios se registran en Eureka.
 
-## Inicio desde una instalación limpia
+```mermaid
+flowchart LR
+    FE[Frontend React] --> GW[API Gateway :8080]
+    GW --> AUTH[auth-service :8081]
+    GW --> USERS[users-service :8082]
+    GW --> ACC[account-service :8083]
+
+    AUTH --> KC[Keycloak]
+    AUTH --> DBA[(MySQL Auth)]
+    AUTH --> MAIL[MailHog]
+    AUTH -. cliente técnico .-> USERS
+    AUTH -. cliente técnico .-> ACC
+    USERS --> DBU[(MySQL Users)]
+    USERS -. sincroniza titular .-> ACC
+    ACC --> DBAc[(MySQL Accounts)]
+
+    AUTH --> EUREKA[Eureka :8761]
+    USERS --> EUREKA
+    ACC --> EUREKA
+    GW --> EUREKA
+```
+
+El detalle de componentes, flujos y decisiones se encuentra en [la documentación de arquitectura](docs/infrastructure/architecture.md).
+
+| Componente | Responsabilidad | Puerto local |
+| --- | --- | --- |
+| `discovery-server` | Registro y descubrimiento de servicios Eureka | 8761 |
+| `api-gateway` | Entrada única, enrutamiento y validación JWT | 8080 |
+| `auth-service` | Registro, acceso, recuperación de contraseña e integración Keycloak | 8081 |
+| `users-service` | Perfil del usuario y sincronización del titular de la cuenta | 8082 |
+| `account-service` | Cuentas, tarjetas, actividad, ingresos y transferencias | 8083 |
+| `FrontEnd` | Interfaz web de la billetera | 3000 |
+
+## Instalación y ejecución
+
+### Requisitos
+
+- JDK 21
+- Maven 3.9 o superior
+- Node.js 18 o superior y npm
+- Docker Desktop con Docker Compose v2
 
 ### 1. Configurar variables locales
 
-Copiar el archivo de ejemplo:
+Desde la raíz del repositorio, creá el archivo local de variables:
 
 ```powershell
 Copy-Item .env.example .env
 ```
 
-Generar un secreto local de 64 caracteres para el cliente técnico:
+Completá los valores de `.env`. Para generar el secreto técnico de Keycloak podés usar:
 
 ```powershell
-$newSecret = [guid]::NewGuid().ToString("N") + [guid]::NewGuid().ToString("N")
-
-(Get-Content .env) `
-  -replace '^KEYCLOAK_AUTH_SERVICE_SECRET=.*$', "KEYCLOAK_AUTH_SERVICE_SECRET=$newSecret" |
-  Set-Content .env
+[guid]::NewGuid().ToString('N') + [guid]::NewGuid().ToString('N')
 ```
 
-No versionar `.env` ni compartir sus valores. Docker Compose toma las variables desde ese archivo.
+Nunca publiques el archivo `.env` ni contraseñas reales.
 
-> Si la terminal tuviera una variable anterior con el mismo nombre, eliminarla antes de levantar Docker:
->
-> ```powershell
-> Remove-Item Env:\KEYCLOAK_AUTH_SERVICE_SECRET -ErrorAction SilentlyContinue
-> ```
-
-### 2. Iniciar infraestructura
-
-Desde la raíz del repositorio:
+### 2. Ejecutar la infraestructura local
 
 ```powershell
 docker compose up -d
 docker compose ps
-docker compose logs keycloak-bootstrap
+docker compose logs keycloak-bootstrap --tail 30
 ```
 
-Esto inicia MySQL para usuarios, cuentas y autenticación; Keycloak, MailHog y el bootstrap de Keycloak.
+El bootstrap debe informar `Cliente técnico de Keycloak configurado.`. Servicios auxiliares disponibles:
 
-Docker Compose verifica la disponibilidad de MySQL y Keycloak mediante healthchecks. El contenedor `keycloak-bootstrap` comienza recién cuando Keycloak informa estado `healthy`, evitando intentos de inicialización prematuros.
+| Servicio | URL |
+| --- | --- |
+| Keycloak | http://localhost:8180 |
+| MailHog | http://localhost:8025 |
+| Eureka | http://localhost:8761 |
 
-- Keycloak: `http://localhost:8180`
-- MailHog: `http://localhost:8025`
-- Eureka: `http://localhost:8761`
+### 3. Ejecutar los microservicios manualmente
 
-En una instalación limpia, Keycloak importa automáticamente el realm `digital-money-house`. El contenedor `keycloak-bootstrap` aplica el secreto local al cliente técnico `auth-service`; debe finalizar con código `0` y el mensaje `Cliente técnico de Keycloak configurado.`
-
-El realm incluye una Service Account para `auth-service`, con el rol `SERVICE` y los permisos mínimos de `realm-management` necesarios para administrar usuarios. No se requiere configuración manual en Keycloak.
-
-### 3. Validar y compilar el backend
+Primero verificá la compilación:
 
 ```powershell
 mvn clean test
-mvn install -pl common
 ```
 
-### 4. Iniciar microservicios
-
-Abrir una terminal por servicio e iniciarlos en este orden:
+Luego iniciá cada módulo en terminales separadas, en este orden:
 
 ```powershell
 mvn spring-boot:run -pl discovery-server
-```
-
-```powershell
 mvn spring-boot:run -pl users-service
-```
-
-```powershell
 mvn spring-boot:run -pl account-service
-```
-
-Para Auth Service, cargar el mismo secreto de `.env` en la terminal:
-
-```powershell
-$env:KEYCLOAK_AUTH_SERVICE_SECRET = (
-  Get-Content .env |
-  Where-Object { $_ -like "KEYCLOAK_AUTH_SERVICE_SECRET=*" }
-).Split("=", 2)[1]
-
 mvn spring-boot:run -pl auth-service
-```
-
-Finalmente:
-
-```powershell
 mvn spring-boot:run -pl api-gateway
 ```
 
-Comprobar en `http://localhost:8761` que estén registrados `USERS-SERVICE`, `ACCOUNT-SERVICE`, `AUTH-SERVICE` y `API-GATEWAY`.
-
-### 5. Iniciar el frontend
-
-En otra terminal:
+### 4. Ejecutar el frontend
 
 ```powershell
 Set-Location FrontEnd
@@ -123,109 +117,150 @@ npm install
 npm start
 ```
 
-Abrir `http://localhost:3000`.
+Abrí http://localhost:3000. La API se consume mediante el Gateway en http://localhost:8080.
 
-El frontend consume el Gateway en `http://localhost:8080/api`; no requiere `json-server`.
+### Ejecución integral con contenedores
 
-## Despliegue con contenedores (AWS)
-
-Además del `docker-compose.yml` local, el repositorio incluye `docker-compose.cloud.yml` para ejecutar la solución completa en un único host, por ejemplo una instancia EC2. Construye imágenes de los cinco componentes propios (`discovery-server`, Gateway, Auth, Users y Accounts) a partir del `Dockerfile` raíz; el FrontEnd se publica con Nginx y se comunica con el Gateway mediante el proxy interno `/api`.
-
-1. En la instancia instalar Docker Engine con Docker Compose y clonar este repositorio.
-2. Copiar `.env.example` a `.env`. Reemplazar **todos** los valores de ejemplo, en particular `KEYCLOAK_AUTH_SERVICE_SECRET`, `KEYCLOAK_ADMIN_PASSWORD`, `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`.
-3. Desde la raíz del proyecto, construir e iniciar los contenedores:
+El archivo `docker-compose.cloud.yml` construye las imágenes de los microservicios y del frontend, preparado para una instancia cloud:
 
 ```powershell
 docker compose -f docker-compose.cloud.yml --env-file .env up --build -d
-docker compose -f docker-compose.cloud.yml --env-file .env ps
+docker compose -f docker-compose.cloud.yml ps
 ```
 
-4. Abrir únicamente el puerto TCP `80` en el Security Group de AWS. Bases de datos, Keycloak, Eureka y los microservicios quedan en la red privada de Docker.
+En una PC local usá `FRONTEND_PORT=8088` en `.env` si el puerto 80 está ocupado. Para desplegar en AWS, seguí [la guía de infraestructura](docs/infrastructure/aws-deployment.md).
 
-El Compose espera los healthchecks de MySQL, Keycloak, Eureka y cada aplicación antes de iniciar las dependencias. La aplicación queda disponible en `http://IP_PUBLICA_EC2/`.
+## Endpoints principales
 
-Si el puerto 80 está ocupado durante una prueba local (por ejemplo, por XAMPP), definir `FRONTEND_PORT=8088` en `.env` y abrir `http://localhost:8088`. En AWS conservar `FRONTEND_PORT=80`.
+Todas las rutas se exponen a través de `http://localhost:8080/api`. Las rutas protegidas requieren el encabezado `Authorization: Bearer <accessToken>`.
 
-> Este Compose está pensado para una entrega o ambiente de demostración de una sola instancia. Para producción se recomienda reemplazar los volúmenes MySQL por RDS, usar HTTPS con un balanceador o proxy administrado, guardar secretos en AWS Secrets Manager y publicar las imágenes en Amazon ECR.
+### Autenticación y usuario
 
-## Validación reproducible
+| Operación | Ruta | Respuestas relevantes |
+| --- | --- | --- |
+| Registro | `POST /auth/register` | `201`, `400`, `409` |
+| Inicio de sesión | `POST /auth/login` | `200`, `400`, `401` |
+| Cierre de sesión | `POST /auth/logout` | `200`, `401` |
+| Consultar perfil | `GET /users/{userId}` | `200`, `401`, `403`, `404` |
+| Actualizar perfil parcial | `PATCH /users/{userId}` | `200`, `400`, `401`, `403`, `404` |
 
-Para repetir una prueba completamente limpia, eliminando únicamente datos locales de Docker:
+Ejemplo de actualización parcial:
 
-```powershell
-docker compose down -v
-docker compose up -d
+```json
+{
+  "firstName": "Valentina",
+  "phone": "1122334455"
+}
 ```
 
-Luego esperar a que `keycloak-bootstrap` finalice correctamente, iniciar los microservicios y registrar un usuario mediante:
+Al modificar nombre o apellido, se sincroniza el `holderName` de la cuenta.
 
-```text
-POST http://localhost:8080/api/auth/register
+### Cuenta, tarjetas e ingresos
+
+| Operación | Ruta | Respuestas relevantes |
+| --- | --- | --- |
+| Consultar cuenta propia | `GET /accounts/me/{userId}` | `200`, `401`, `404` |
+| Actualizar alias | `PATCH /accounts/{accountId}` | `200`, `400`, `403`, `404`, `409` |
+| Asociar tarjeta | `POST /accounts/{accountId}/cards` | `201`, `400`, `403`, `404`, `409` |
+| Listar tarjetas | `GET /accounts/{accountId}/cards` | `200`, `403`, `404` |
+| Ingresar dinero | `POST /accounts/{accountId}/transferences` | `201`, `400`, `403`, `404` |
+| Consultar actividad | `GET /accounts/{accountId}/activity` | `200`, `400`, `403`, `404` |
+
+Ejemplo de ingreso usando una tarjeta vigente:
+
+```json
+{
+  "cardId": "uuid-de-la-tarjeta",
+  "amount": 1500.00
+}
 ```
 
-El registro crea el usuario en Keycloak, el perfil en Users Service y una cuenta digital en Account Service. La respuesta incluye un CVU de 22 dígitos y un alias de tres palabras.
+La fecha de vencimiento de las tarjetas usa el formato `MMYY`; debe representar el mes actual o uno futuro.
 
-## Funcionalidades
+Para filtrar actividad, `range` acepta: `ZERO_TO_1000`, `FROM_1000_TO_5000`, `FROM_5000_TO_20000`, `FROM_20000_TO_100000` y `OVER_100000`.
 
-- Registro de usuario y creación automática de cuenta digital.
-- CVU de 22 dígitos y alias de tres palabras.
-- Login con Keycloak y tokens OAuth2/OIDC.
-- Acceso protegido con roles `USER`, `ADMIN` y `SERVICE`.
-- Logout seguro.
-- Recuperación de contraseña por código de seis dígitos.
-- Verificación de email por código de seis dígitos.
-- Códigos visibles en desarrollo desde MailHog.
+### Transferencias y comprobantes
 
-## Pruebas
+| Operación | Ruta | Respuestas relevantes |
+| --- | --- | --- |
+| Transferir a CVU, CBU o alias | `POST /accounts/{accountId}/transferences` | `200`, `400`, `403`, `404`, `410` |
+| Últimos destinatarios | `GET /accounts/{accountId}/transferences` | `200`, `403`, `404` |
+| Detalle de actividad | `GET /accounts/{accountId}/activity/{transactionId}` | `200`, `403`, `404` |
 
-Ejecutar la suite automatizada:
+Ejemplo de transferencia:
+
+```json
+{
+  "destination": "rio.rio.mar",
+  "amount": 400.00
+}
+```
+
+`410 Gone` indica fondos insuficientes. El frontend permite descargar desde el detalle de actividad un comprobante PDF con la información visible de la operación.
+
+## Testing
+
+### Colección Postman
+
+La colección se encuentra en [docs/postman/Digital-Money-House.postman_collection.json](docs/postman/Digital-Money-House.postman_collection.json). Importala en Postman y configurá sus variables de entorno. Incluye scripts para guardar tokens e identificadores generados durante el flujo.
+
+### Tests automatizados
 
 ```powershell
 mvn clean test
 ```
 
-### Colección Postman
-
-La colección importable está disponible en:
-
-```text
-docs/postman/Digital-Money-House.postman_collection.json
-```
-
-Importarla en Postman y configurar las variables email y password con un usuario de pruebas. La variable baseUrl debe conservar http://localhost:8080.
-Ejecutar primero Login y luego Obtener mi cuenta; esos requests completan automáticamente token, usuario y cuenta para el resto de las solicitudes. La colección no contiene credenciales, tokens ni secretos reales.
-
-### Smoke API del Sprint 2
-
-La prueba `AccountApiSmokeTest` usa RestAssured para validar login, token OAuth2, API Gateway y consulta de cuenta.
-
-Con los servicios activos, ejecutar:
+Para los smoke tests HTTP se requiere la infraestructura levantada:
 
 ```powershell
-$env:SMOKE_BASE_URL = "http://localhost:8080"
-$env:SMOKE_EMAIL = "valentina.reproducible@example.com"
-$env:SMOKE_PASSWORD = "ClaveSegura123"
-$env:SMOKE_CARD_ID = "UUID-de-una-tarjeta-vigente-asociada-a-la-cuenta"
-# Opcional: habilita el caso de seguridad HTTP 403 del smoke.
-$env:SMOKE_OTHER_ACCOUNT_ID = "UUID-de-una-cuenta-de-otro-usuario"
-
-mvn test -pl account-service -Dtest=AccountApiSmokeTest
-```
-### Endpoints del Sprint 3
-
-- `GET /api/accounts/{accountId}/activity`: lista la actividad de la cuenta, con filtros opcionales `from`, `to`, `type=INCOME|EXPENSE` y `range`.
-  Los valores admitidos para `range` son: `ZERO_TO_1000` (0 a 1.000), `FROM_1000_TO_5000` (1.000 a 5.000), `FROM_5000_TO_20000` (5.000 a 20.000), `FROM_20000_TO_100000` (20.000 a 100.000) y `OVER_100000` (más de 100.000).
-- `GET /api/accounts/{accountId}/activity/{transactionId}`: obtiene el detalle de un movimiento.
-- `POST /api/accounts/{accountId}/transferences`: acredita saldo desde una tarjeta propia. Recibe `cardId` y `amount`; devuelve HTTP 201.
-
-### Endpoints del Sprint 4
-
-- `GET /api/accounts/{accountId}/transferences`: lista hasta cinco destinatarios recientes del propietario. Devuelve HTTP `200`; una cuenta ajena devuelve `403`.
-- `POST /api/accounts/{accountId}/transferences`: realiza una transferencia cuando recibe `destination` (alias de tres palabras o CVU de 22 dígitos) y `amount`. Devuelve HTTP `200`, `400` para un destino inexistente o inválido y `410` cuando no hay fondos suficientes. El formato anterior con `cardId` y `amount` se conserva para el ingreso de dinero del Sprint 3.
-
-Los planes, casos manuales y evidencias de los Sprints 1 a 4 están en `docs/testing`. La planilla ejecutable que clasifica los casos Smoke y Regression está en `docs/testing/Digital-Money-House-Test-Suites.xlsx`. La colección actualizada de Postman está en `docs/postman/Digital-Money-House.postman_collection.json`.
+$env:RUN_API_SMOKE_TESTS = "true"
+mvn test -pl account-service
 ```
 
-## Seguridad
+La cobertura incluye autenticación, actualización de perfil, cuentas, tarjetas, actividad, ingresos, transferencias exitosas y fallidas, permisos sobre cuentas ajenas y recursos inexistentes.
 
-`.env` está excluido del repositorio. `.env.example` contiene solo valores de ejemplo; cada instalación debe generar su propio secreto técnico.
+### Prueba manual sugerida
+
+1. Registrá dos usuarios y verificá ambos correos en MailHog.
+2. Iniciá sesión con el primer usuario y asociá una tarjeta vigente.
+3. Ingresá dinero y comprobá el saldo y la actividad.
+4. Transferí dinero al alias, CVU o CBU del segundo usuario.
+5. Revisá el saldo de ambas cuentas, los últimos destinatarios y el comprobante PDF.
+
+La planificación, casos, ejecución exploratoria y cierre de calidad están versionados en [docs/testing](docs/testing/). La suite clasificatoria está disponible en [Digital-Money-House-Test-Suites.xlsx](docs/testing/Digital-Money-House-Test-Suites.xlsx).
+
+## Decisiones de diseño y buenas prácticas
+
+- **Keycloak y JWT:** la identidad, contraseñas y tokens se delegan a Keycloak; los servicios validan los JWT en el Gateway y en sus propias fronteras.
+- **Datos por dominio:** cada microservicio mantiene su propia base MySQL para reducir acoplamiento.
+- **Gateway y Eureka:** el Gateway centraliza el acceso externo; Eureka permite descubrir los servicios sin direcciones codificadas.
+- **Cliente técnico:** Auth Service usa un cliente de servicio para coordinar altas y actualizaciones necesarias sin exponer credenciales de administración al frontend.
+- **Transferencias atómicas:** la operación valida destinatario y fondos antes de actualizar ambos saldos y registrar los movimientos relacionados.
+- **Secretos fuera del repositorio:** `.env` está ignorado; `.env.example` funciona como contrato de configuración reproducible.
+
+## Problemas comunes
+
+| Situación | Solución |
+| --- | --- |
+| Los servicios no arrancan en Docker | Revisá `docker compose ps`, esperá los healthchecks y consultá los logs del servicio afectado. |
+| Error de credenciales o cliente técnico | Comprobá `.env` y ejecutá `docker compose logs keycloak-bootstrap --tail 30`. |
+| CORS o respuesta 403 desde el frontend | Usá siempre el Gateway y verificá que el token Bearer no haya expirado. |
+| El puerto 80 muestra otra aplicación | Definí `FRONTEND_PORT=8088` y abrí http://localhost:8088. |
+| Una tarjeta no puede asociarse o cargar dinero | Revisá número, vencimiento `MMYY` vigente y que no esté duplicada. |
+
+## Documentación adicional
+
+- [Arquitectura](docs/infrastructure/architecture.md)
+- [Despliegue cloud/AWS](docs/infrastructure/aws-deployment.md)
+- [Colección de Postman](docs/postman/Digital-Money-House.postman_collection.json)
+- [Plan de pruebas Sprint 4](docs/testing/sprint-4-test-plan.md)
+- [Pruebas exploratorias Sprint 4](docs/testing/sprint-4-exploratory-testing.md)
+- [QA Sign Off Sprint 4](docs/testing/sprint-4-qa-sign-off.md)
+
+## Checklist de entrega
+
+- [x] README con instalación, ejecución, arquitectura, API y testing.
+- [x] Diagrama de arquitectura versionado.
+- [x] Colección Postman incluida.
+- [x] Casos de prueba, evidencia exploratoria y QA Sign Off versionados.
+- [x] Docker Compose local y de despliegue cloud documentados.

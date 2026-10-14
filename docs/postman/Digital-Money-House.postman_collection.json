@@ -581,6 +581,56 @@
           "response": []
         }
       ]
+    },
+    {
+      "name": "Transferencias",
+      "item": [
+        {
+          "name": "Listar destinatarios recientes",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Destinatarios obtenidos', () => pm.response.to.have.status(200));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Transferir dinero por alias o CVU",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Transferencia creada', () => pm.response.to.have.status(200));",
+                "const transaction = pm.response.json();",
+                "pm.test('Es una transferencia saliente', () => pm.expect(transaction.type).to.eql('TRANSFER_OUT'));",
+                "pm.collectionVariables.set('transactionId', transaction.id);"
+              ]
+            }
+          }],
+          "request": {
+            "description": "destination acepta un alias de tres palabras en minúscula o un CVU de 22 dígitos. Respuestas: 400 destino inexistente, 410 fondos insuficientes.",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": \"{{recipientAlias}}\",\n  \"amount\": 100\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        }
+      ]
     }
   ],
   "variable": [
@@ -618,6 +668,10 @@
     },
     {
       "key": "transactionId",
+      "value": ""
+    },
+    {
+      "key": "recipientAlias",
       "value": ""
     },
     {

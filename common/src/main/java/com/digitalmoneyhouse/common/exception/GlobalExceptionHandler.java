@@ -129,6 +129,14 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<ApiError> handleInsufficientFunds(
+        InsufficientFundsException exception,
+        HttpServletRequest request
+    ) {
+        return error(HttpStatus.GONE, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(
         Exception exception,

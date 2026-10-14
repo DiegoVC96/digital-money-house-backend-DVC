@@ -42,6 +42,14 @@ export interface Account {
   origin: string;
 }
 
+export interface RecentRecipient {
+  accountId: string;
+  holderName: string;
+  cvu: string;
+  alias: string;
+  lastTransferAt: string;
+}
+
 export enum ActivityType {
   TRANSFER_IN = 'transfer-in',
   TRANSFER_OUT = 'transfer-out',

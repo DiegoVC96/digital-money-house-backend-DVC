@@ -11,6 +11,10 @@ public interface AccountRepository
 
     Optional<Account> findByUserId(UUID userId);
 
+    Optional<Account> findByCvu(String cvu);
+
+    Optional<Account> findByAlias(String alias);
+
     boolean existsByCvu(String cvu);
 
     boolean existsByAlias(String alias);

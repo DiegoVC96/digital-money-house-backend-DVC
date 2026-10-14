@@ -106,4 +106,36 @@ public final class AccountDtos {
         BigDecimal amount
     ) {
     }
+
+    public record CreateTransferenceRequest(
+        UUID cardId,
+
+        @Pattern(
+            regexp = "(\\d{22}|[a-z]+\\.[a-z]+\\.[a-z]+)",
+            message = "debe ser un CVU de 22 dígitos o un alias de tres palabras en minúscula"
+        )
+        String destination,
+
+        @NotNull
+        @DecimalMin(value = "0.01")
+        @Digits(integer = 17, fraction = 2)
+        BigDecimal amount
+    ) {
+        public boolean isDeposit() {
+            return cardId != null && destination == null;
+        }
+
+        public boolean isTransfer() {
+            return cardId == null && destination != null;
+        }
+    }
+
+    public record RecipientResponse(
+        UUID accountId,
+        String holderName,
+        String cvu,
+        String alias,
+        Instant lastTransferAt
+    ) {
+    }
 }

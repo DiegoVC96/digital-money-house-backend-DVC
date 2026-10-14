@@ -1,6 +1,7 @@
 package com.digitalmoneyhouse.accounts.domain;
 
 import jakarta.persistence.*;
+import com.digitalmoneyhouse.common.exception.InsufficientFundsException;
 
 import java.math.BigDecimal;
 import java.util.UUID;
@@ -83,5 +84,21 @@ public class Account {
         }
 
         balance = balance.add(amount);
+    }
+
+    public void debit(BigDecimal amount) {
+        if (amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException(
+                "El importe a debitar debe ser mayor que cero"
+            );
+        }
+
+        if (balance.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(
+                "No contás con fondos suficientes para realizar la transferencia"
+            );
+        }
+
+        balance = balance.subtract(amount);
     }
 }

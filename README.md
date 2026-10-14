@@ -1,4 +1,4 @@
-# Digital Money House — Sprints 1, 2 y 3
+# Digital Money House — Sprints 1 a 4
 
 Proyecto full-stack de billetera digital con microservicios Spring Boot, Keycloak y React.
 
@@ -127,6 +127,27 @@ Abrir `http://localhost:3000`.
 
 El frontend consume el Gateway en `http://localhost:8080/api`; no requiere `json-server`.
 
+## Despliegue con contenedores (AWS)
+
+Además del `docker-compose.yml` local, el repositorio incluye `docker-compose.cloud.yml` para ejecutar la solución completa en un único host, por ejemplo una instancia EC2. Construye imágenes de los cinco componentes propios (`discovery-server`, Gateway, Auth, Users y Accounts) a partir del `Dockerfile` raíz; el FrontEnd se publica con Nginx y se comunica con el Gateway mediante el proxy interno `/api`.
+
+1. En la instancia instalar Docker Engine con Docker Compose y clonar este repositorio.
+2. Copiar `.env.example` a `.env`. Reemplazar **todos** los valores de ejemplo, en particular `KEYCLOAK_AUTH_SERVICE_SECRET`, `KEYCLOAK_ADMIN_PASSWORD`, `MYSQL_PASSWORD` y `MYSQL_ROOT_PASSWORD`.
+3. Desde la raíz del proyecto, construir e iniciar los contenedores:
+
+```powershell
+docker compose -f docker-compose.cloud.yml --env-file .env up --build -d
+docker compose -f docker-compose.cloud.yml --env-file .env ps
+```
+
+4. Abrir únicamente el puerto TCP `80` en el Security Group de AWS. Bases de datos, Keycloak, Eureka y los microservicios quedan en la red privada de Docker.
+
+El Compose espera los healthchecks de MySQL, Keycloak, Eureka y cada aplicación antes de iniciar las dependencias. La aplicación queda disponible en `http://IP_PUBLICA_EC2/`.
+
+Si el puerto 80 está ocupado durante una prueba local (por ejemplo, por XAMPP), definir `FRONTEND_PORT=8088` en `.env` y abrir `http://localhost:8088`. En AWS conservar `FRONTEND_PORT=80`.
+
+> Este Compose está pensado para una entrega o ambiente de demostración de una sola instancia. Para producción se recomienda reemplazar los volúmenes MySQL por RDS, usar HTTPS con un balanceador o proxy administrado, guardar secretos en AWS Secrets Manager y publicar las imágenes en Amazon ECR.
+
 ## Validación reproducible
 
 Para repetir una prueba completamente limpia, eliminando únicamente datos locales de Docker:
@@ -189,8 +210,7 @@ $env:SMOKE_CARD_ID = "UUID-de-una-tarjeta-vigente-asociada-a-la-cuenta"
 $env:SMOKE_OTHER_ACCOUNT_ID = "UUID-de-una-cuenta-de-otro-usuario"
 
 mvn test -pl account-service -Dtest=AccountApiSmokeTest
-
-```md
+```
 ### Endpoints del Sprint 3
 
 - `GET /api/accounts/{accountId}/activity`: lista la actividad de la cuenta, con filtros opcionales `from`, `to`, `type=INCOME|EXPENSE` y `range`.
@@ -198,7 +218,12 @@ mvn test -pl account-service -Dtest=AccountApiSmokeTest
 - `GET /api/accounts/{accountId}/activity/{transactionId}`: obtiene el detalle de un movimiento.
 - `POST /api/accounts/{accountId}/transferences`: acredita saldo desde una tarjeta propia. Recibe `cardId` y `amount`; devuelve HTTP 201.
 
-Los planes, casos manuales y evidencias de los Sprints 1, 2 y 3 están en `docs/testing`. La colección actualizada de Postman está en `docs/postman/Digital-Money-House.postman_collection.json`.
+### Endpoints del Sprint 4
+
+- `GET /api/accounts/{accountId}/transferences`: lista hasta cinco destinatarios recientes del propietario. Devuelve HTTP `200`; una cuenta ajena devuelve `403`.
+- `POST /api/accounts/{accountId}/transferences`: realiza una transferencia cuando recibe `destination` (alias de tres palabras o CVU de 22 dígitos) y `amount`. Devuelve HTTP `200`, `400` para un destino inexistente o inválido y `410` cuando no hay fondos suficientes. El formato anterior con `cardId` y `amount` se conserva para el ingreso de dinero del Sprint 3.
+
+Los planes, casos manuales y evidencias de los Sprints 1 a 4 están en `docs/testing`. La planilla ejecutable que clasifica los casos Smoke y Regression está en `docs/testing/Digital-Money-House-Test-Suites.xlsx`. La colección actualizada de Postman está en `docs/postman/Digital-Money-House.postman_collection.json`.
 ```
 
 ## Seguridad

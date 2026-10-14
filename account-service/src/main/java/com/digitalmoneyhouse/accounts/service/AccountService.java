@@ -23,11 +23,15 @@ import com.digitalmoneyhouse.accounts.api.AccountDtos.CreateDepositRequest;
 import com.digitalmoneyhouse.accounts.domain.PaymentCard;
 import com.digitalmoneyhouse.accounts.domain.TransactionType;
 import com.digitalmoneyhouse.accounts.repository.PaymentCardRepository;
+import com.digitalmoneyhouse.accounts.repository.MoneyTransferRepository;
+import com.digitalmoneyhouse.accounts.domain.MoneyTransfer;
+import com.digitalmoneyhouse.accounts.api.AccountDtos.RecipientResponse;
 
 import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.List;
+import java.util.LinkedHashMap;
 
 @Service
 @Transactional
@@ -38,16 +42,19 @@ public class AccountService {
     private final SecureRandom secureRandom = new SecureRandom();
     private final TransactionRepository transactionRepository;
     private final PaymentCardRepository paymentCardRepository;
+    private final MoneyTransferRepository moneyTransferRepository;
 
     public AccountService(
         AccountRepository accountRepository,
         TransactionRepository transactionRepository,
         PaymentCardRepository paymentCardRepository,
+        MoneyTransferRepository moneyTransferRepository,
         AliasWordsProvider aliasWordsProvider
     ) {
         this.accountRepository = accountRepository;
         this.transactionRepository = transactionRepository;
         this.paymentCardRepository = paymentCardRepository;
+        this.moneyTransferRepository = moneyTransferRepository;
         this.aliasWordsProvider = aliasWordsProvider;
     }
 
@@ -220,6 +227,84 @@ public class AccountService {
         );
 
         return toTransactionResponse(transactionRepository.save(transaction));
+    }
+
+    public TransactionResponse transfer(
+        UUID sourceAccountId,
+        String destinationIdentifier,
+        java.math.BigDecimal amount
+    ) {
+        Account sourceAccount = findById(sourceAccountId);
+        validateAccountAccess(sourceAccount);
+
+        Account destinationAccount = findDestination(destinationIdentifier);
+
+        if (sourceAccount == destinationAccount
+            || (sourceAccount.getId() != null
+                && sourceAccount.getId().equals(destinationAccount.getId()))) {
+            throw new IllegalArgumentException(
+                "No podés transferir dinero a tu propia cuenta"
+            );
+        }
+
+        sourceAccount.debit(amount);
+        destinationAccount.credit(amount);
+
+        Transaction debit = transactionRepository.save(new Transaction(
+            sourceAccount,
+            TransactionType.TRANSFER_OUT,
+            amount,
+            "Transferencia a " + destinationAccount.getAlias()
+        ));
+
+        transactionRepository.save(new Transaction(
+            destinationAccount,
+            TransactionType.TRANSFER_IN,
+            amount,
+            "Transferencia de " + sourceAccount.getAlias()
+        ));
+
+        moneyTransferRepository.save(new MoneyTransfer(
+            sourceAccount,
+            destinationAccount,
+            amount
+        ));
+
+        return toTransactionResponse(debit);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecipientResponse> getRecentRecipients(UUID accountId) {
+        Account sourceAccount = findById(accountId);
+        validateAccountAccess(sourceAccount);
+
+        LinkedHashMap<UUID, RecipientResponse> recipients = new LinkedHashMap<>();
+
+        moneyTransferRepository
+            .findBySourceAccount_IdOrderByCreatedAtDesc(accountId)
+            .forEach(transfer -> {
+                Account destination = transfer.getDestinationAccount();
+                recipients.putIfAbsent(destination.getId(), new RecipientResponse(
+                    destination.getId(),
+                    destination.getHolderName(),
+                    destination.getCvu(),
+                    destination.getAlias(),
+                    transfer.getCreatedAt()
+                ));
+            });
+
+        return recipients.values().stream().limit(5).toList();
+    }
+
+    private Account findDestination(String destinationIdentifier) {
+        String destination = destinationIdentifier.trim();
+
+        return (destination.matches("\\d{22}")
+            ? accountRepository.findByCvu(destination)
+            : accountRepository.findByAlias(destination))
+            .orElseThrow(() -> new IllegalArgumentException(
+                "La cuenta de destino no existe"
+            ));
     }
 
     private Account findById(UUID accountId) {

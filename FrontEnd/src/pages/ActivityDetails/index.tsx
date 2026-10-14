@@ -14,6 +14,7 @@ import {
   getUserActivity,
   printPage,
   calculateTransacionType,
+  downloadPaymentReceipt,
 } from '../../utils';
 import { Transaction, ActivityType } from '../../types';
 import { useAuth, useLocalStorage, useUserInfo } from '../../hooks';
@@ -32,6 +33,18 @@ const ActivityDetails = () => {
   const [token] = useLocalStorage('token');
   const { logout } = useAuth();
   const { user } = useUserInfo();
+
+  const receipt = () => {
+    if (!userActivity) return;
+
+    downloadPaymentReceipt({
+      id: userActivity.id,
+      amount: formatCurrency(locales, currency, Math.abs(userActivity.amount)),
+      operation: RECORD_MESSAGES[activityType],
+      description: userActivity.name || 'Sin descripcion',
+      date: formatDateFromString(userActivity.dated),
+    });
+  };
 
   useEffect(() => {
     if (user && user.id) {
@@ -90,6 +103,9 @@ const ActivityDetails = () => {
                 <i>
                   {userActivity && formatDateFromString(userActivity.dated)}
                 </i>
+                <p className="tw-text-sm">
+                  N° de operación: {userActivity && userActivity.id}
+                </p>
               </div>
             </div>
           </div>
@@ -102,6 +118,14 @@ const ActivityDetails = () => {
               variant="outlined"
             >
               Imprimir
+            </Button>
+            <Button
+              onClick={receipt}
+              className="tw-h-12 tw-w-64 print:tw-hidden"
+              disabled={!userActivity}
+              variant="outlined"
+            >
+              Descargar PDF
             </Button>
             <Button
               onClick={() => navigate(ROUTES.HOME)}

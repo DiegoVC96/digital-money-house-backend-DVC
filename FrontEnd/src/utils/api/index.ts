@@ -4,6 +4,7 @@ import {
   User,
   Transaction,
   TransactionType,
+  RecentRecipient,
 } from '../../types';
 
 const myInit = (method = 'GET', token?: string) => {
@@ -21,14 +22,21 @@ const myInit = (method = 'GET', token?: string) => {
 const myRequest = (endpoint: string, method: string, token?: string) =>
   new Request(endpoint, myInit(method, token));
 
-const baseUrl = 'http://localhost:8080/api';
+const baseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:8080/api';
 
-const rejectPromise = <T = never>(response?: Response): Promise<T> =>
-  Promise.reject({
-    status: (response && response.status) || '00',
-    statusText: (response && response.statusText) || 'Ocurrió un error',
-    err: true,
-  });
+const rejectPromise = async <T = never>(response?: Response): Promise<T> => {
+  let status = response?.status || '00';
+  let statusText = response?.statusText || 'Ocurrió un error';
+
+  try {
+    const apiError = await response?.clone().json();
+    statusText = apiError.message || statusText;
+  } catch {
+    // La respuesta puede no tener cuerpo JSON; se conserva el estado HTTP.
+  }
+
+  return Promise.reject({ status, statusText, err: true });
+};
 
 export const login = (email: string, password: string) => {
   return fetch(myRequest(`${baseUrl}/auth/login`, 'POST'), {
@@ -358,7 +366,7 @@ export const createUserCard = (
     )
     .catch((err) => {
       console.log(err);
-      return rejectPromise(err);
+      return Promise.reject(err);
     });
 };
 
@@ -405,70 +413,40 @@ const toTransaction = (transaction: any): Transaction => ({
       : TransactionType.Transfer,
 });
 
-// TODO: edit when backend is ready
 export const createTransferActivity = (
   userId: string,
-  token: string,
-  origin: string,
   destination: string,
   amount: number,
-  name?: string
-) => {
-  return fetch(
-    myRequest(`${baseUrl}/users/${userId}/activities`, 'POST', token),
-    {
-      body: JSON.stringify({
-        type: 'Transfer',
-        amount: amount * -1,
-        origin,
-        destination,
-        name,
-        dated: new Date(), // date must be genarated in backend
-      }),
-    }
-  )
+  token: string
+): Promise<Transaction> => {
+  return getAccount(userId, token)
+    .then((account) => fetch(
+      myRequest(`${baseUrl}/accounts/${account.id}/transferences`, 'POST', token),
+      { body: JSON.stringify({ destination, amount }) }
+    ))
     .then((response) =>
       response.ok ? response.json() : rejectPromise(response)
     )
-    .then((response) => {
-      discountMoney(response.amount, userId, token);
-      return response;
-    })
+    .then(toTransaction)
     .catch((err) => {
       console.log(err);
-      return rejectPromise(err);
+      return Promise.reject(err);
     });
 };
 
-// TODO: remove when backend is ready
-const discountMoney = (amount: number, userId: string, token: string) => {
+export const getRecentRecipients = (
+  userId: string,
+  token: string
+): Promise<RecentRecipient[]> => {
   return getAccount(userId, token)
-    .then((account) => {
-      // amount is negavite
-      const newBalance = account.balance + amount;
-      const accountId = account.id;
-      return {
-        newBalance,
-        accountId,
-      };
-    })
-    .then(({ newBalance, accountId }) => {
-      fetch(
-        myRequest(
-          `${baseUrl}/users/${userId}/accounts/${accountId}`,
-          'PATCH',
-          token
-        ),
-        {
-          body: JSON.stringify({ balance: newBalance }),
-        }
-      )
-        .then((response) =>
-          response.ok ? response.json() : rejectPromise(response)
-        )
-        .catch((err) => {
-          console.log(err);
-          return rejectPromise(err);
-        });
+    .then((account) => fetch(
+      myRequest(`${baseUrl}/accounts/${account.id}/transferences`, 'GET', token)
+    ))
+    .then((response) =>
+      response.ok ? response.json() : rejectPromise(response)
+    )
+    .catch((err) => {
+      console.log(err);
+      return Promise.reject(err);
     });
 };

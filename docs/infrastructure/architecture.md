@@ -1,83 +1,75 @@
-# Diseño de infraestructura - Sprint 1
+# Arquitectura de Digital Money House
 
 ## Objetivo
 
-La infraestructura permite ejecutar Digital Money House localmente mediante microservicios independientes, autenticación centralizada y una base de datos separada para cada dominio.
+Digital Money House implementa una billetera digital mediante microservicios independientes. Cada servicio es responsable de un dominio funcional y de su propia persistencia; la comunicación externa entra por el API Gateway.
 
 ## Componentes
 
-| Componente | Puerto | Responsabilidad |
-|---|---:|---|
-| FrontEnd | 3000 | Interfaz del usuario |
-| API Gateway | 8080 | Punto único de entrada, CORS, enrutamiento y validación JWT |
-| Eureka Server | 8761 | Registro y descubrimiento de microservicios |
-| Auth Service | 8081 | Registro, login, logout e integración con Keycloak |
-| Users Service | 8082 | Perfil de usuario y roles de negocio |
-| Account Service | 8083 | Cuenta digital, CVU y alias |
-| Keycloak | 8180 | Identidad, credenciales, roles y emisión de tokens |
-| MySQL Users | 3307 | Base de datos exclusiva de usuarios |
-| MySQL Accounts | 3308 | Base de datos exclusiva de cuentas |
-
-## Boceto de red y componentes
+| Componente | Rol |
+| --- | --- |
+| Frontend React | Interfaz de usuario para registro, perfil, tarjetas, actividad, ingresos y transferencias. |
+| API Gateway | Punto de entrada único, enrutamiento de rutas `/api/**` y validación de acceso JWT. |
+| Discovery Server | Registro y descubrimiento de instancias mediante Eureka. |
+| Auth Service | Registro, login, logout, recuperación de contraseña, envío de correo y coordinación con Keycloak. |
+| Users Service | Consulta y actualización parcial del perfil del usuario. |
+| Account Service | Cuenta, CVU, alias, tarjetas, movimientos, actividad, ingresos y transferencias. |
+| Keycloak | Proveedor de identidad OAuth2/OIDC, usuarios y tokens JWT. |
+| MailHog | Buzón local para inspeccionar emails de verificación y recuperación. |
+| MySQL | Una base independiente para Auth, Users y Accounts. |
 
 ```mermaid
-flowchart LR
-    FE[FrontEnd<br/>localhost:3000]
-    GW[API Gateway<br/>localhost:8080]
-    EU[Eureka Server<br/>localhost:8761]
+flowchart TB
+    U[Usuario] --> FE[Frontend React]
+    FE --> GW[API Gateway :8080]
 
-    AUTH[Auth Service<br/>localhost:8081]
-    USERS[Users Service<br/>localhost:8082]
-    ACCOUNTS[Account Service<br/>localhost:8083]
+    GW --> AUTH[auth-service :8081]
+    GW --> USERS[users-service :8082]
+    GW --> ACC[account-service :8083]
 
-    KC[Keycloak<br/>localhost:8180]
-    MYSQL_USERS[(MySQL Users<br/>localhost:3307)]
-    MYSQL_ACCOUNTS[(MySQL Accounts<br/>localhost:3308)]
+    AUTH --> KC[Keycloak]
+    AUTH --> MAIL[MailHog]
+    AUTH --> DBA[(MySQL Auth)]
+    USERS --> DBU[(MySQL Users)]
+    ACC --> DBACC[(MySQL Accounts)]
 
-    FE -->|HTTP / Bearer JWT| GW
-    GW -->|Rutas auth| AUTH
-    GW -->|Rutas users| USERS
-    GW -->|Rutas accounts| ACCOUNTS
+    AUTH -. cliente técnico .-> USERS
+    AUTH -. cliente técnico .-> ACC
+    USERS -. sincroniza holderName .-> ACC
 
-    AUTH -->|Administración y tokens OAuth2| KC
-    AUTH -->|Feign| USERS
-    AUTH -->|Feign| ACCOUNTS
-
-    USERS --> MYSQL_USERS
-    ACCOUNTS --> MYSQL_ACCOUNTS
-
-    AUTH -. Registro Eureka .-> EU
-    USERS -. Registro Eureka .-> EU
-    ACCOUNTS -. Registro Eureka .-> EU
-    GW -. Descubrimiento .-> EU
+    AUTH --> E[Eureka :8761]
+    USERS --> E
+    ACC --> E
+    GW --> E
 ```
 
-## Flujo de registro
+## Flujos principales
 
-1. El FrontEnd envía los datos a Auth Service por API Gateway.
-2. Auth Service valida que email y DNI estén disponibles.
-3. Auth Service crea la identidad y asigna el rol `USER` en Keycloak.
-4. Auth Service crea el perfil en Users Service.
-5. Auth Service crea la cuenta digital en Account Service.
-6. Account Service genera CVU y alias desde `alias-words.txt`.
-7. Keycloak entrega access token y refresh token.
-8. Auth Service responde al cliente sin exponer contraseña.
+### Registro e inicio de sesión
 
-## Seguridad
+1. El frontend invoca al Gateway.
+2. Auth Service valida la información, crea la identidad en Keycloak y coordina la creación de los datos de usuario y cuenta.
+3. La cuenta obtiene un CVU y alias iniciales.
+4. Keycloak autentica al usuario y Auth Service retorna los tokens de acceso.
 
-- Keycloak administra credenciales, usuarios y roles.
-- Los servicios validan JWT emitidos por Keycloak.
-- Registro y login son públicos.
-- Perfil, cuenta y logout requieren Bearer token.
-- Auth Service utiliza un cliente técnico para operaciones administrativas en Keycloak.
-- La contraseña no se guarda en las bases de datos de Users ni Accounts.
+### Actualización de perfil
 
-## Persistencia
+1. El usuario envía solo los campos que desea modificar a Users Service.
+2. Users Service verifica propiedad y actualiza su base de datos.
+3. Si cambian nombre o apellido, sincroniza el titular (`holderName`) con Account Service.
+4. Si se modifica email o contraseña, Users Service solicita a Auth Service la actualización de la identidad en Keycloak.
 
-Cada microservicio posee su propia base de datos:
+### Ingreso de dinero y transferencia
 
-- Users Service administra `users_db`.
-- Account Service administra `accounts_db`.
-- Keycloak administra su propio almacenamiento interno.
+1. Account Service valida que la cuenta corresponda al usuario autenticado.
+2. Para un ingreso, valida que la tarjeta exista, pertenezca a la cuenta y no esté vencida.
+3. Para una transferencia, localiza el destino por alias, CVU o CBU y verifica saldo suficiente.
+4. La operación persiste los saldos y movimientos relacionados de forma transaccional.
+5. El frontend muestra el detalle de actividad y puede generar un comprobante PDF.
 
-Esta separación evita acceso directo entre servicios a bases de datos ajenas y conserva la independencia de cada dominio.
+## Seguridad y persistencia
+
+- Las rutas públicas se limitan a registro, login, recuperación de contraseña y recursos necesarios para el flujo de identidad.
+- El resto de las rutas requiere un JWT válido y controles de propiedad sobre el recurso solicitado.
+- Las credenciales y secretos se configuran por variables de entorno; `.env` no se versiona y `.env.example` documenta las requeridas.
+- Docker Compose usa healthchecks y dependencias condicionadas para iniciar los servicios cuando sus dependencias están listas.

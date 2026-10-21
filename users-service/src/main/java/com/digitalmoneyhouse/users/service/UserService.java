@@ -92,10 +92,9 @@ public class UserService {
     }
 
     public UserResponse update(
-    UUID id,
-    UpdateUserRequest request,
-    String authorization
-) {
+        UUID id,
+        UpdateUserRequest request
+    ) {
     User user = userRepository.findById(id)
         .orElseThrow(() ->
             new ResourceNotFoundException("Usuario no encontrado")
@@ -137,12 +136,10 @@ public class UserService {
 
     identityClient.updateIdentity(
         id,
-        authorization,
         new IdentityClient.UpdateIdentityRequest(
             firstName,
             lastName,
-            email,
-            request.password()
+            email
         )
     );
 
@@ -157,7 +154,6 @@ public class UserService {
     if (holderNameChanged) {
         accountClient.updateHolderName(
             id,
-            authorization,
             new AccountClient.UpdateHolderNameRequest(
                 firstName + " " + lastName
             )

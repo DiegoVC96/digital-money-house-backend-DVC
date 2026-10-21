@@ -9,6 +9,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import com.digitalmoneyhouse.common.exception.InvalidCredentialsException;
+import com.digitalmoneyhouse.common.security.KeycloakServiceTokenProvider;
 
 import java.util.Map;
 
@@ -25,44 +26,25 @@ public class KeycloakTokenService {
     private final RestClient restClient;
     private final String baseUrl;
     private final String realm;
-    private final String serviceClientId;
-    private final String serviceClientSecret;
     private final String publicClientId;
+    private final KeycloakServiceTokenProvider serviceTokenProvider;
 
     public KeycloakTokenService(
         RestClient.Builder restClientBuilder,
         @Value("${keycloak.base-url}") String baseUrl,
         @Value("${keycloak.realm}") String realm,
-        @Value("${keycloak.service-client-id}") String serviceClientId,
-        @Value("${keycloak.service-client-secret}") String serviceClientSecret,
-        @Value("${keycloak.public-client-id}") String publicClientId
+        @Value("${keycloak.public-client-id}") String publicClientId,
+        KeycloakServiceTokenProvider serviceTokenProvider
     ) {
         this.restClient = restClientBuilder.build();
         this.baseUrl = baseUrl;
         this.realm = realm;
-        this.serviceClientId = serviceClientId;
-        this.serviceClientSecret = serviceClientSecret;
         this.publicClientId = publicClientId;
+        this.serviceTokenProvider = serviceTokenProvider;
     }
 
     public String getServiceAccessToken() {
-        MultiValueMap<String, String> form = new LinkedMultiValueMap<>();
-
-        form.add("grant_type", "client_credentials");
-        form.add("client_id", serviceClientId);
-        form.add("client_secret", serviceClientSecret);
-
-        Map<?, ?> response = requestToken(form);
-
-        Object token = response.get("access_token");
-
-        if (token == null) {
-            throw new IllegalStateException(
-                "Keycloak no devolvió un token técnico"
-            );
-        }
-
-        return token.toString();
+        return serviceTokenProvider.getAccessToken();
     }
 
     public UserToken login(String email, String password) {
@@ -92,7 +74,7 @@ public class KeycloakTokenService {
                 tokenType == null ? "Bearer" : tokenType.toString()
             );
         } catch (RestClientResponseException exception) {
-            throw new InvalidCredentialsException("Contraseña incorrecta");
+            throw new InvalidCredentialsException("Credenciales inválidas");
         }
     }
 

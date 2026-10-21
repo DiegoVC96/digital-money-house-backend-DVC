@@ -6,11 +6,11 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.LoginRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.RegisterRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.RegisteredUser;
 import com.digitalmoneyhouse.auth.api.AuthDtos.UpdateIdentityRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.ChangePasswordRequest;
 import com.digitalmoneyhouse.auth.client.AccountsClient;
 import com.digitalmoneyhouse.auth.client.UsersClient;
 import org.springframework.stereotype.Service;
 import com.digitalmoneyhouse.common.exception.ConflictException;
-import com.digitalmoneyhouse.common.exception.ResourceNotFoundException;
 import com.digitalmoneyhouse.auth.api.AuthDtos.EmailVerificationConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
@@ -167,13 +167,6 @@ public void confirmEmailVerification(
     public AuthResponse login(LoginRequest request) {
         String email = request.email().toLowerCase(Locale.ROOT);
 
-        UsersClient.AvailabilityResponse availability =
-            usersClient.checkAvailability(email, "00000000");
-
-        if (!availability.emailExists()) {
-            throw new ResourceNotFoundException("Usuario inexistente");
-        }
-
         KeycloakTokenService.UserToken token =
             keycloakTokenService.login(email, request.password());
 
@@ -202,8 +195,23 @@ public void confirmEmailVerification(
             userId,
             request.email().toLowerCase(Locale.ROOT),
             request.firstName(),
-            request.lastName(),
-            request.password()
+            request.lastName()
+        );
+    }
+
+    public void changePassword(
+        UUID userId,
+        String email,
+        ChangePasswordRequest request
+    ) {
+        keycloakTokenService.login(
+            email.toLowerCase(Locale.ROOT),
+            request.currentPassword()
+        );
+
+        keycloakIdentityService.changePassword(
+            userId,
+            request.newPassword()
         );
     }
 }

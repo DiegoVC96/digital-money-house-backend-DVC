@@ -1,7 +1,8 @@
 package com.digitalmoneyhouse.auth.config;
 
-import com.digitalmoneyhouse.auth.service.KeycloakTokenService;
+import com.digitalmoneyhouse.common.security.KeycloakServiceTokenProvider;
 import feign.RequestInterceptor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpHeaders;
@@ -10,11 +11,28 @@ import org.springframework.http.HttpHeaders;
 public class FeignSecurityConfig {
 
     @Bean
+    KeycloakServiceTokenProvider keycloakServiceTokenProvider(
+        org.springframework.web.client.RestClient.Builder restClientBuilder,
+        @Value("${keycloak.base-url}") String baseUrl,
+        @Value("${keycloak.realm}") String realm,
+        @Value("${keycloak.service-client-id}") String clientId,
+        @Value("${keycloak.service-client-secret}") String clientSecret
+    ) {
+        return new KeycloakServiceTokenProvider(
+            restClientBuilder,
+            baseUrl,
+            realm,
+            clientId,
+            clientSecret
+        );
+    }
+
+    @Bean
     RequestInterceptor serviceTokenInterceptor(
-        KeycloakTokenService keycloakTokenService
+        KeycloakServiceTokenProvider serviceTokenProvider
     ) {
         return requestTemplate -> {
-            String token = keycloakTokenService.getServiceAccessToken();
+            String token = serviceTokenProvider.getAccessToken();
 
             requestTemplate.header(
                 HttpHeaders.AUTHORIZATION,

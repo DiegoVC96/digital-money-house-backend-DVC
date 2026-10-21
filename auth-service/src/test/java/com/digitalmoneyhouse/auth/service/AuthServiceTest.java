@@ -11,6 +11,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import com.digitalmoneyhouse.auth.domain.VerificationPurpose;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.ChangePasswordRequest;
 
 import java.math.BigDecimal;
 import java.util.Set;
@@ -171,5 +172,32 @@ void verifiesCodeAndResetsPassword() {
         authService.logout(userId);
 
         verify(keycloakIdentityService).logoutUser(userId);
+    }
+
+    @Test
+    void changesPasswordOnlyAfterValidatingTheCurrentOne() {
+        UUID userId = UUID.randomUUID();
+        ChangePasswordRequest request = new ChangePasswordRequest(
+            "ClaveActual123",
+            "NuevaClaveSegura123"
+        );
+
+        when(keycloakTokenService.login(
+            "lucia@example.com",
+            "ClaveActual123"
+        )).thenReturn(new KeycloakTokenService.UserToken(
+            "access-token", "refresh-token", "Bearer"
+        ));
+
+        authService.changePassword(userId, "lucia@example.com", request);
+
+        verify(keycloakTokenService).login(
+            "lucia@example.com",
+            "ClaveActual123"
+        );
+        verify(keycloakIdentityService).changePassword(
+            userId,
+            "NuevaClaveSegura123"
+        );
     }
 }

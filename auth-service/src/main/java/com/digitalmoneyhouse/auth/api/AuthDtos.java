@@ -90,6 +90,16 @@ public record EmailVerificationConfirmRequest(
     ) {
     }
 
+    public record ChangePasswordRequest(
+        @NotBlank
+        String currentPassword,
+
+        @NotBlank
+        @Size(min = 8, max = 72)
+        String newPassword
+    ) {
+    }
+
     public record AccountSummary(
         String cvu,
         String alias
@@ -107,10 +117,7 @@ public record EmailVerificationConfirmRequest(
 
         @NotBlank
         @Email
-        String email,
-
-        @Size(min = 8, max = 72)
-        String password
+        String email
     ) {
     }
 

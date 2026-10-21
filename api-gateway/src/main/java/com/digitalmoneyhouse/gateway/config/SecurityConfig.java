@@ -21,6 +21,13 @@ public class SecurityConfig {
             .cors(Customizer.withDefaults())
             .authorizeExchange(exchange -> exchange
                 .pathMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .pathMatchers(
+                    "/api/auth/internal/**",
+                    "/api/users/internal",
+                    "/api/users/internal/**",
+                    "/api/accounts/internal",
+                    "/api/accounts/internal/**"
+                ).denyAll()
                 .pathMatchers("/api/auth/**", "/actuator/**").permitAll()
                 .anyExchange().authenticated()
             )

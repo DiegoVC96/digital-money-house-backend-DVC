@@ -137,6 +137,19 @@ public class GlobalExceptionHandler {
         return error(HttpStatus.GONE, exception.getMessage(), request);
     }
 
+    @ExceptionHandler(DownstreamServiceException.class)
+    public ResponseEntity<ApiError> handleDownstreamService(
+        DownstreamServiceException exception,
+        HttpServletRequest request
+    ) {
+        HttpStatus status = HttpStatus.resolve(exception.getStatus());
+        if (status == null) {
+            status = HttpStatus.BAD_GATEWAY;
+        }
+
+        return error(status, exception.getMessage(), request);
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleUnexpected(
         Exception exception,
@@ -161,8 +174,8 @@ public class GlobalExceptionHandler {
         HttpServletRequest request
     ) {
         return error(
-            HttpStatus.BAD_REQUEST,
-            exception.getMessage(),
+            HttpStatus.UNAUTHORIZED,
+            "Credenciales inválidas",
             request
         );
     }

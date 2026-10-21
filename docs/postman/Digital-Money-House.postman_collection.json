@@ -201,6 +201,60 @@
           "response": []
         },
         {
+          "name": "Cambiar contraseña con validación de clave actual",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Contraseña actualizada', () => pm.response.to.have.status(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{password}}\",\n  \"newPassword\": \"{{updatedPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "auth",
+                "password"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
           "name": "Obtener mi cuenta",
           "event": [
             {
@@ -629,6 +683,117 @@
             "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
           },
           "response": []
+        },
+        {
+          "name": "Error: destino inexistente",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "pm.test('Destino inexistente', () => pm.response.to.have.status(400));",
+                "pm.test('Explica el error', () => pm.expect(pm.response.json().message).to.include('destino'));"
+              ]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"nunca.existe.cuenta\",\n  \"amount\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Error: fondos insuficientes",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Fondos insuficientes', () => pm.response.to.have.status(410));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"{{recipientAlias}}\",\n  \"amount\": 999999999.99\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Error: cuenta ajena",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Cuenta ajena bloqueada', () => pm.response.to.have.status(403));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"{{recipientAlias}}\",\n  \"amount\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{otherAccountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{otherAccountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Error: transferencia a cuenta propia",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Cuenta propia rechazada', () => pm.response.to.have.status(400));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"{{accountAlias}}\",\n  \"amount\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Error: importe inválido",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Importe inválido rechazado', () => pm.response.to.have.status(400));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"{{recipientAlias}}\",\n  \"amount\": 0\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
+        },
+        {
+          "name": "Error: petición sin token",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('Autenticación requerida', () => pm.response.to.have.status(401));"]
+            }
+          }],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"destination\": \"{{recipientAlias}}\",\n  \"amount\": 1\n}", "options": { "raw": { "language": "json" } } },
+            "url": { "raw": "{{baseUrl}}/api/accounts/{{accountId}}/transferences", "host": ["{{baseUrl}}"], "path": ["api", "accounts", "{{accountId}}", "transferences"] }
+          },
+          "response": []
         }
       ]
     }
@@ -672,6 +837,14 @@
     },
     {
       "key": "recipientAlias",
+      "value": ""
+    },
+    {
+      "key": "accountAlias",
+      "value": ""
+    },
+    {
+      "key": "otherAccountId",
       "value": ""
     },
     {

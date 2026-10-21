@@ -6,6 +6,8 @@
 
 El FrontEnd expone el puerto 80 y Nginx reenvía `/api` al API Gateway. Los demás componentes quedan únicamente en la red privada de Docker.
 
+Keycloak se ejecuta en modo de producción (`start --optimized`) y utiliza una base MySQL dedicada. El realm se importa únicamente durante la inicialización; usuarios, credenciales y sesiones persistentes se conservan en el volumen de esa base aunque se recree el contenedor de Keycloak.
+
 ## Preparación de la instancia
 
 1. Crear una instancia EC2 Linux y permitir tráfico entrante TCP 80 desde los orígenes necesarios.
@@ -41,7 +43,7 @@ docker compose -f docker-compose.cloud.yml --env-file .env logs -f api-gateway
 
 - Se publica solamente el puerto 80 del FrontEnd.
 - MySQL, MailHog, Keycloak, Eureka y las APIs no se exponen públicamente.
-- El Compose usa volúmenes Docker para persistir las tres bases MySQL.
+- El Compose usa volúmenes Docker para persistir las cuatro bases MySQL, incluida la de Keycloak.
 - Para detener el ambiente sin borrar datos: `docker compose -f docker-compose.cloud.yml --env-file .env down`.
 - Para borrar también los datos persistidos: agregar `-v` (acción destructiva).
 

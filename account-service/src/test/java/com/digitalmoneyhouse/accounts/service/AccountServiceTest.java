@@ -40,6 +40,10 @@ import java.util.Optional;
 import java.util.UUID;
 import java.security.SecureRandom;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -635,6 +639,123 @@ void rejectsTransferWhenBalanceIsInsufficient() {
 }
 
 @Test
+void rejectsTransferToTheSameAccount() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account account = new Account(
+        userId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    account.credit(new BigDecimal("100.00"));
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(account));
+    when(accountRepository.findByAlias("sol.luna.rio"))
+        .thenReturn(Optional.of(account));
+
+    IllegalArgumentException exception = assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.transfer(
+            accountId, "sol.luna.rio", new BigDecimal("10.00")
+        )
+    );
+
+    assertEquals(
+        "No podés transferir dinero a tu propia cuenta",
+        exception.getMessage()
+    );
+    assertEquals(0, account.getBalance().compareTo(new BigDecimal("100.00")));
+    verifyNoInteractions(transactionRepository, moneyTransferRepository);
+}
+
+@Test
+void rejectsTransferWithAnInvalidAmount() {
+    UUID userId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account source = new Account(
+        userId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+    source.credit(new BigDecimal("100.00"));
+    Account destination = new Account(
+        UUID.randomUUID(), "9876543210987654321098", "mar.cielo.brisa", "Bruno Díaz"
+    );
+
+    authenticateAs(userId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(source));
+    when(accountRepository.findByAlias("mar.cielo.brisa"))
+        .thenReturn(Optional.of(destination));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> accountService.transfer(
+            accountId, "mar.cielo.brisa", BigDecimal.ZERO
+        )
+    );
+
+    assertEquals(0, source.getBalance().compareTo(new BigDecimal("100.00")));
+    assertEquals(0, destination.getBalance().compareTo(BigDecimal.ZERO));
+    verifyNoInteractions(transactionRepository, moneyTransferRepository);
+}
+
+@Test
+void rejectsTransferFromAnAccountOwnedByAnotherUser() {
+    UUID ownerId = UUID.randomUUID();
+    UUID otherUserId = UUID.randomUUID();
+    UUID accountId = UUID.randomUUID();
+    Account source = new Account(
+        ownerId, "1234567890123456789012", "sol.luna.rio", "Ana Pérez"
+    );
+
+    authenticateAs(otherUserId);
+    when(accountRepository.findById(accountId)).thenReturn(Optional.of(source));
+
+    assertThrows(
+        AccessDeniedException.class,
+        () -> accountService.transfer(
+            accountId, "mar.cielo.brisa", new BigDecimal("10.00")
+        )
+    );
+
+    verify(accountRepository, never()).findByAlias(any());
+    verifyNoInteractions(transactionRepository, moneyTransferRepository);
+}
+
+@Test
+void allowsOnlyOneConcurrentDebitWhenBothOperationsUseTheFullBalance()
+    throws Exception {
+
+    Account account = new Account(
+        UUID.randomUUID(),
+        "1234567890123456789012",
+        "sol.luna.rio",
+        "Ana Pérez"
+    );
+    account.credit(new BigDecimal("100.00"));
+
+    CountDownLatch ready = new CountDownLatch(2);
+    CountDownLatch start = new CountDownLatch(1);
+    ExecutorService executor = Executors.newFixedThreadPool(2);
+
+    try {
+        Future<Boolean> first = executor.submit(() -> debitWhenReady(
+            account, new BigDecimal("100.00"), ready, start
+        ));
+        Future<Boolean> second = executor.submit(() -> debitWhenReady(
+            account, new BigDecimal("100.00"), ready, start
+        ));
+
+        ready.await();
+        start.countDown();
+
+        int successfulDebits = (first.get() ? 1 : 0) + (second.get() ? 1 : 0);
+
+        assertEquals(1, successfulDebits);
+        assertEquals(0, account.getBalance().compareTo(BigDecimal.ZERO));
+    } finally {
+        executor.shutdownNow();
+    }
+}
+
+@Test
 void returnsRecentRecipientsForTheAccountOwner() {
     UUID userId = UUID.randomUUID();
     UUID accountId = UUID.randomUUID();
@@ -756,5 +877,22 @@ private void authenticateAs(UUID userId) {
     );
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
+}
+
+private boolean debitWhenReady(
+    Account account,
+    BigDecimal amount,
+    CountDownLatch ready,
+    CountDownLatch start
+) throws InterruptedException {
+    ready.countDown();
+    start.await();
+
+    try {
+        account.debit(amount);
+        return true;
+    } catch (InsufficientFundsException exception) {
+        return false;
+    }
 }
 }

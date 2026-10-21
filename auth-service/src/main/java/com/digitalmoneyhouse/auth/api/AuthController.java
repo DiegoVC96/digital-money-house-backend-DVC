@@ -18,6 +18,7 @@ import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryConfirmRequest;
 import com.digitalmoneyhouse.auth.api.AuthDtos.PasswordRecoveryRequest;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import com.digitalmoneyhouse.auth.api.AuthDtos.UpdateIdentityRequest;
+import com.digitalmoneyhouse.auth.api.AuthDtos.ChangePasswordRequest;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -87,6 +88,18 @@ public ResponseEntity<Void> confirmPasswordRecovery(
     return ResponseEntity.ok().build();
 }
 
+    @PatchMapping("/password")
+    public ResponseEntity<Void> changePassword(
+        @Valid @RequestBody ChangePasswordRequest request,
+        JwtAuthenticationToken authentication
+    ) {
+        UUID userId = UUID.fromString(authentication.getName());
+        String email = authentication.getToken().getClaimAsString("email");
+        authService.changePassword(userId, email, request);
+
+        return ResponseEntity.ok().build();
+    }
+
 @PostMapping("/email-verification/request")
 public ResponseEntity<Void> requestEmailVerification(
     JwtAuthenticationToken authentication
@@ -109,7 +122,7 @@ public ResponseEntity<Void> confirmEmailVerification(
 }
 
 @PutMapping("/internal/users/{userId}")
-@PreAuthorize("#userId.toString() == authentication.name")
+@PreAuthorize("hasRole('SERVICE')")
 public ResponseEntity<Void> updateIdentity(
     @PathVariable UUID userId,
     @Valid @RequestBody UpdateIdentityRequest request

@@ -46,19 +46,39 @@ services:
       timeout: 5s
       retries: 15
 
+  mysql-keycloak:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: keycloak_db
+      MYSQL_USER: dmh
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Definir MYSQL_ROOT_PASSWORD en .env}
+    volumes:
+      - mysql-keycloak-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
   mailhog:
     image: mailhog/mailhog:v1.0.1
 
   keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    command: start-dev --import-realm
+    build:
+      context: ./keycloak
+    command: start --optimized --import-realm --http-enabled=true --hostname-strict=false
     environment:
       KC_HEALTH_ENABLED: "true"
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://mysql-keycloak:3306/keycloak_db
+      KC_DB_USERNAME: dmh
+      KC_DB_PASSWORD: ${MYSQL_PASSWORD:?Definir MYSQL_PASSWORD en .env}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KEYCLOAK_ADMIN_USERNAME:?Definir KEYCLOAK_ADMIN_USERNAME en .env}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Definir KEYCLOAK_ADMIN_PASSWORD en .env}
       KEYCLOAK_AUTH_SERVICE_SECRET: ${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}
-    volumes:
-      - ./keycloak/import:/opt/keycloak/data/import:ro
+    depends_on:
+      mysql-keycloak: { condition: service_healthy }
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/localhost/9000 && echo -e \"GET /health/ready HTTP/1.1\\r\\nhost: localhost\\r\\nConnection: close\\r\\n\\r\\n\" >&3 && grep -q 200 <&3'"]
       interval: 10s
@@ -125,6 +145,8 @@ services:
       SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/digital-money-house
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
       EUREKA_INSTANCE_HOSTNAME: users-service
+      KEYCLOAK_BASE_URL: http://keycloak:8080
+      KEYCLOAK_AUTH_SERVICE_SECRET: ${KEYCLOAK_AUTH_SERVICE_SECRET:?Definir KEYCLOAK_AUTH_SERVICE_SECRET en .env}
     depends_on:
       mysql-users: { condition: service_healthy }
       discovery-server: { condition: service_healthy }
@@ -184,3 +206,5 @@ volumes:
     name: dmh-cloud-mysql-auth-data
   mysql-accounts-data:
     name: dmh-cloud-mysql-accounts-data
+  mysql-keycloak-data:
+    name: dmh-cloud-mysql-keycloak-data

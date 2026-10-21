@@ -2,32 +2,49 @@
 
 ## Objetivo
 
-Verificar que una persona usuaria pueda transferir saldo disponible a otra cuenta mediante CVU o alias y consultar sus destinatarios recientes.
+Verificar transferencias por alias o CVU, sus controles de seguridad y negocio, los destinatarios recientes y el comprobante de la operación.
 
 ## Alcance
 
-- Transferencias entre dos cuentas digitales existentes.
-- Débito y crédito atómicos, con movimientos `TRANSFER_OUT` y `TRANSFER_IN`.
+- Transferencias entre cuentas existentes, con débito y crédito atómicos.
 - Consulta de hasta cinco destinatarios recientes.
-- Descarga de comprobante PDF desde el detalle de una operación.
-- Validación de destino inexistente, fondos insuficientes y acceso a cuentas ajenas.
-- Integración con FrontEnd, API Gateway, Keycloak y Account Service.
+- Errores de destino inexistente, saldo insuficiente, cuenta ajena, cuenta propia e importe inválido.
+- Autenticación obligatoria para las APIs de transferencia.
+- Detalle de operación y descarga de comprobante PDF.
+- Pruebas de concurrencia del débito de saldo, controladores y smoke test contra el ambiente integrado.
+
+## Suites
+
+| Suite | Propósito | Casos incluidos |
+|---|---|---|
+| Smoke | Verificar los flujos críticos disponibles en un ambiente integrado. | Cuenta propia, actividad, transferencia y autenticación obligatoria. |
+| Regression | Verificar reglas de negocio, errores HTTP, seguridad y experiencia de usuario. | Destino, saldo, cuenta ajena, cuenta propia, monto, destinatarios, comprobante y concurrencia. |
 
 ## Evidencia automatizada
 
-- `AccountServiceTest` valida transferencia exitosa, destino inexistente, fondos insuficientes, destinatarios recientes y acceso ajeno.
-- La suite de `account-service` finalizó correctamente con 28 pruebas: 22 de `AccountServiceTest` y 6 de `CardServiceTest`.
+- `AccountServiceTest` cubre transferencia exitosa por alias, destino inexistente, fondos insuficientes, cuenta propia, cuenta ajena, importe inválido, destinatarios y débito concurrente.
+- `AccountControllerTest` valida HTTP 200 para transferencia válida, HTTP 400 para importe inválido y HTTP 410 para fondos insuficientes.
+- `AccountApiSmokeTest` cubre cuenta, actividad, depósito, detalle y, cuando se configuran las variables requeridas, transferencia integrada, destinatarios, 401 sin token, 400 por cuenta propia, monto inválido, destino inexistente y 410 por saldo insuficiente.
+- Para ejecutar la suite integrada se requieren `SMOKE_BASE_URL`, `SMOKE_EMAIL`, `SMOKE_PASSWORD`, `SMOKE_CARD_ID` y, para la transferencia real, `SMOKE_RECIPIENT_ALIAS`. `SMOKE_OTHER_ACCOUNT_ID` habilita el control 403 de cuenta ajena.
+- El 21/10/2026, `mvn test` finalizó con **46 pruebas aprobadas**, sin fallos ni errores. `AccountApiSmokeTest` se omitió al no contar con las variables de un ambiente integrado.
 
-## Evidencia manual registrada
+```powershell
+mvn test -pl account-service -am
+```
 
-- Transferencia de `$400` por alias completada: saldo de origen `$1.100`, saldo de destino `$400` y destinatario reciente `rio.rio.mar`.
-- Destino inexistente: HTTP `400`.
-- Fondos insuficientes: HTTP `410`.
-- Consulta de destinatarios de una cuenta ajena: HTTP `403`.
-- FrontEnd: transferencia de `$100` y visualización correcta de su detalle tras corregir la redirección por `id`.
+## Estado de ejecución manual
 
-## Entregables de calidad
+La planilla `Digital-Money-House-Test-Suites.xlsx` es la fuente única para el seguimiento manual.
 
-- Casos Smoke y Regression: `Digital-Money-House-Test-Suites.xlsx`.
-- Notas de testing exploratorio: `sprint-4-exploratory-testing.md`.
-- Métricas y aprobación QA: `sprint-4-qa-sign-off.md`.
+| Métrica | Cantidad |
+|---|---:|
+| Casos diseñados (Sprints 2 a 4) | 17 |
+| Casos ejecutados | 14 |
+| Casos aprobados | 14 |
+| Casos pendientes | 3 |
+
+Los tres pendientes son S4-07, S4-08 y S4-09. La colección Postman ya contiene los scripts necesarios para ejecutarlos. No se los marca como aprobados hasta registrar una ejecución real.
+
+## Ejecución con Postman
+
+Importar `docs/postman/Digital-Money-House.postman_collection.json`, completar `baseUrl`, `accessToken`, `accountId`, `accountAlias`, `recipientAlias` y `otherAccountId`, y ejecutar la carpeta **Transferencias**. Los seis escenarios de error verifican código HTTP y, cuando corresponde, el mensaje recibido.

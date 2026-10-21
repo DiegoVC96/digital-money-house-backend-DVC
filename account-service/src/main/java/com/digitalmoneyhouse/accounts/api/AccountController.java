@@ -94,10 +94,7 @@ public class AccountController {
     }
 
     @PutMapping("/internal/users/{userId}/holder-name")
-    @PreAuthorize("""
-        #userId.toString() == authentication.name
-        or hasRole('ADMIN')
-    """)
+    @PreAuthorize("hasRole('SERVICE')")
     public AccountResponse updateHolderName(
         @PathVariable UUID userId,
         @Valid @RequestBody UpdateHolderNameRequest request

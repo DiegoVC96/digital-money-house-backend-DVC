@@ -39,11 +39,11 @@ La planilla `Digital-Money-House-Test-Suites.xlsx` es la fuente única para el s
 | Métrica | Cantidad |
 |---|---:|
 | Casos diseñados (Sprints 2 a 4) | 17 |
-| Casos ejecutados | 14 |
-| Casos aprobados | 14 |
-| Casos pendientes | 3 |
+| Casos ejecutados | 17 |
+| Casos aprobados | 17 |
+| Casos pendientes | 0 |
 
-Los tres pendientes son S4-07, S4-08 y S4-09. La colección Postman ya contiene los scripts necesarios para ejecutarlos. No se los marca como aprobados hasta registrar una ejecución real.
+El 21/10/2026 se ejecutaron en el entorno cloud los casos S4-07, S4-08 y S4-09 mediante la colección Postman: transferencia a cuenta propia (HTTP 400), importe inválido (HTTP 400) y solicitud sin token (HTTP 401). Los 17 casos manuales diseñados quedaron ejecutados y aprobados.
 
 ## Ejecución con Postman
 

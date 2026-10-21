@@ -23,9 +23,11 @@ class AccountApiSmokeTest {
     private static String password;
     private static String cardId;
     private static String otherAccountId;
+    private static String recipientAlias;
     private static String accessToken;
     private static String userId;
     private static String accountId;
+    private static String accountAlias;
 
     @BeforeAll
     static void configure() throws Exception {
@@ -41,6 +43,10 @@ class AccountApiSmokeTest {
             "smoke.other-account-id",
             "SMOKE_OTHER_ACCOUNT_ID"
         );
+        recipientAlias = configuration(
+            "smoke.recipient-alias",
+            "SMOKE_RECIPIENT_ALIAS"
+        );
 
         Assumptions.assumeTrue(
             !baseUrl.isBlank() && !email.isBlank() && !password.isBlank()
@@ -51,15 +57,17 @@ class AccountApiSmokeTest {
         RestAssured.baseURI = baseUrl;
         accessToken = login();
         userId = jwtSubject(accessToken);
-        accountId = given()
+        var account = given()
             .auth()
             .oauth2(accessToken)
             .when()
             .get("/api/accounts/me/{userId}", userId)
             .then()
             .statusCode(200)
-            .extract()
-            .path("id");
+            .extract();
+
+        accountId = account.path("id");
+        accountAlias = account.path("alias");
     }
 
     @Test
@@ -163,6 +171,112 @@ class AccountApiSmokeTest {
             .get("/api/accounts/{accountId}/activity", otherAccountId)
             .then()
             .statusCode(403);
+    }
+
+    @Test
+    void rejectsTransferWithoutAnAccessToken() {
+        given()
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", accountAlias, "amount", 1))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(401);
+    }
+
+    @Test
+    void rejectsTransferToTheSameAccount() {
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", accountAlias, "amount", 1))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(400);
+    }
+
+    @Test
+    void rejectsTransferWithAnInvalidAmount() {
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", accountAlias, "amount", 0))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(400);
+    }
+
+    @Test
+    void rejectsTransferToAnUnknownDestination() {
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", "nunca.existe.cuenta", "amount", 1))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(400);
+    }
+
+    @Test
+    void transfersToConfiguredRecipientAndListsItAsRecent() {
+        Assumptions.assumeTrue(
+            !recipientAlias.isBlank(),
+            "Definí SMOKE_RECIPIENT_ALIAS para validar transferencias"
+        );
+
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("cardId", cardId, "amount", 1.00))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(201);
+
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", recipientAlias, "amount", 1.00))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(200)
+            .body("type", equalTo("TRANSFER_OUT"));
+
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .when()
+            .get("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(200)
+            .body("alias", org.hamcrest.Matchers.hasItem(recipientAlias));
+    }
+
+    @Test
+    void rejectsTransferWithInsufficientFundsWhenRecipientIsConfigured() {
+        Assumptions.assumeTrue(
+            !recipientAlias.isBlank(),
+            "Definí SMOKE_RECIPIENT_ALIAS para validar fondos insuficientes"
+        );
+
+        given()
+            .auth()
+            .oauth2(accessToken)
+            .contentType(ContentType.JSON)
+            .body(Map.of("destination", recipientAlias, "amount", 999999999.99))
+            .when()
+            .post("/api/accounts/{accountId}/transferences", accountId)
+            .then()
+            .statusCode(410);
     }
 
     private static String login() {

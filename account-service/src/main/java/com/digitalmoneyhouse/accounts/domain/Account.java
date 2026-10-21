@@ -76,7 +76,7 @@ public class Account {
         this.holderName = holderName;
     }
 
-    public void credit(BigDecimal amount) {
+    public synchronized void credit(BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException(
                 "El importe a acreditar debe ser mayor que cero"
@@ -86,7 +86,7 @@ public class Account {
         balance = balance.add(amount);
     }
 
-    public void debit(BigDecimal amount) {
+    public synchronized void debit(BigDecimal amount) {
         if (amount == null || amount.signum() <= 0) {
             throw new IllegalArgumentException(
                 "El importe a debitar debe ser mayor que cero"

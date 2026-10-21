@@ -14,9 +14,9 @@ Digital Money House implementa una billetera digital mediante microservicios ind
 | Auth Service | Registro, login, logout, recuperación de contraseña, envío de correo y coordinación con Keycloak. |
 | Users Service | Consulta y actualización parcial del perfil del usuario. |
 | Account Service | Cuenta, CVU, alias, tarjetas, movimientos, actividad, ingresos y transferencias. |
-| Keycloak | Proveedor de identidad OAuth2/OIDC, usuarios y tokens JWT. |
+| Keycloak | Proveedor de identidad OAuth2/OIDC, usuarios y tokens JWT, respaldado por MySQL en cloud. |
 | MailHog | Buzón local para inspeccionar emails de verificación y recuperación. |
-| MySQL | Una base independiente para Auth, Users y Accounts. |
+| MySQL | Una base independiente para Auth, Users, Accounts y Keycloak. |
 
 ```mermaid
 flowchart TB
@@ -28,6 +28,7 @@ flowchart TB
     GW --> ACC[account-service :8083]
 
     AUTH --> KC[Keycloak]
+    KC --> DBKC[(MySQL Keycloak)]
     AUTH --> MAIL[MailHog]
     AUTH --> DBA[(MySQL Auth)]
     USERS --> DBU[(MySQL Users)]

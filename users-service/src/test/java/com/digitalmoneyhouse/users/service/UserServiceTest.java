@@ -125,7 +125,7 @@ class UserServiceTest {
             "1198765432",
             "87654321",
             "ana.maria@example.com",
-            "NuevaClave123"
+            null
         );
 
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
@@ -134,8 +134,7 @@ class UserServiceTest {
 
         UserResponse response = userService.update(
             id,
-            request,
-            "Bearer token-de-prueba"
+            request
         );
 
         assertEquals("Ana María", response.firstName());
@@ -147,12 +146,12 @@ class UserServiceTest {
 
         verify(identityClient).updateIdentity(
             eq(id),
-            eq("Bearer token-de-prueba"),
-            any(IdentityClient.UpdateIdentityRequest.class)
+            eq(new IdentityClient.UpdateIdentityRequest(
+                "Ana María", "Gómez", "ana.maria@example.com"
+            ))
         );
         verify(accountClient).updateHolderName(
             eq(id),
-            eq("Bearer token-de-prueba"),
             any(AccountClient.UpdateHolderNameRequest.class)
         );
     }
@@ -176,7 +175,7 @@ class UserServiceTest {
         when(userRepository.findById(id)).thenReturn(Optional.of(user));
 
         UserResponse response = userService.update(
-            id, request, "Bearer token-de-prueba"
+            id, request
         );
 
         assertEquals("Ana María", response.firstName());
@@ -185,7 +184,6 @@ class UserServiceTest {
         assertEquals("12345678", response.dni());
         verify(accountClient).updateHolderName(
             eq(id),
-            eq("Bearer token-de-prueba"),
             eq(new AccountClient.UpdateHolderNameRequest("Ana María Pérez"))
         );
     }

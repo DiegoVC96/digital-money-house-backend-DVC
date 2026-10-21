@@ -120,6 +120,11 @@ public void resetPassword(
     updatePassword(userId, newPassword, token);
 }
 
+    public void changePassword(UUID userId, String newPassword) {
+        String token = tokenService.getServiceAccessToken();
+        updatePassword(userId, newPassword, token);
+    }
+
 private UUID findUserIdByEmail(
     String email,
     String token
@@ -181,13 +186,24 @@ private UUID findUserIdByEmail(
     }
 
     public void updateUser(
-    UUID userId,
-    String email,
-    String firstName,
-    String lastName,
-    String password
-) {
+        UUID userId,
+        String email,
+        String firstName,
+        String lastName
+    ) {
     String token = tokenService.getServiceAccessToken();
+    Map<?, ?> currentUser = getUser(userId, token);
+    Object currentEmail = currentUser.get("email");
+    boolean emailChanged = currentEmail == null
+        || !email.equalsIgnoreCase(currentEmail.toString());
+
+    Map<String, Object> update = new HashMap<>();
+    update.put("email", email);
+    update.put("firstName", firstName);
+    update.put("lastName", lastName);
+    if (emailChanged) {
+        update.put("emailVerified", false);
+    }
 
     restClient.put()
         .uri(
@@ -196,14 +212,7 @@ private UUID findUserIdByEmail(
         )
         .headers(headers -> headers.setBearerAuth(token))
         .contentType(MediaType.APPLICATION_JSON)
-        .body(
-            Map.of(
-            "email", email,
-            "firstName", firstName,
-            "lastName", lastName,
-            "emailVerified", false
-            )
-        )
+        .body(update)
         .exchange((request, response) -> {
             if (response.getStatusCode().value() == 404) {
                 throw new ResourceNotFoundException(
@@ -234,11 +243,23 @@ private UUID findUserIdByEmail(
 
             return null;
         });
-
-    if (password != null && !password.isBlank()) {
-        updatePassword(userId, password, token);
     }
-}
+
+    private Map<?, ?> getUser(UUID userId, String token) {
+        Map<?, ?> user = restClient.get()
+            .uri(baseUrl + "/admin/realms/" + realm + "/users/" + userId)
+            .headers(headers -> headers.setBearerAuth(token))
+            .retrieve()
+            .body(Map.class);
+
+        if (user == null) {
+            throw new ResourceNotFoundException(
+                "Usuario no encontrado en Keycloak"
+            );
+        }
+
+        return user;
+    }
 
 private void updatePassword(
     UUID userId,

@@ -3,6 +3,7 @@ package com.digitalmoneyhouse.users.api;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
@@ -67,7 +68,7 @@ public final class UserDtos {
         @Email
         String email,
 
-        @Size(min = 8, max = 72)
+        @Null(message = "la contraseña se actualiza mediante PATCH /api/auth/password")
         String password
     ) {
         public boolean isEmpty() {

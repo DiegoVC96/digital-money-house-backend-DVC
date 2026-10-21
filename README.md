@@ -121,7 +121,7 @@ Abrí http://localhost:3000. La API se consume mediante el Gateway en http://loc
 
 ### Ejecución integral con contenedores
 
-El archivo `docker-compose.cloud.yml` construye las imágenes de los microservicios y del frontend, preparado para una instancia cloud:
+El archivo `docker-compose.cloud.yml` construye las imágenes de los microservicios y del frontend, preparado para una instancia cloud. Keycloak se ejecuta en modo de producción y guarda identidades y credenciales en una base MySQL persistente.
 
 ```powershell
 docker compose -f docker-compose.cloud.yml --env-file .env up --build -d
@@ -141,6 +141,7 @@ Todas las rutas se exponen a través de `http://localhost:8080/api`. Las rutas p
 | Registro | `POST /auth/register` | `201`, `400`, `409` |
 | Inicio de sesión | `POST /auth/login` | `200`, `400`, `401` |
 | Cierre de sesión | `POST /auth/logout` | `200`, `401` |
+| Cambiar contraseña | `PATCH /auth/password` | `200`, `400`, `401` |
 | Consultar perfil | `GET /users/{userId}` | `200`, `401`, `403`, `404` |
 | Actualizar perfil parcial | `PATCH /users/{userId}` | `200`, `400`, `401`, `403`, `404` |
 
@@ -154,6 +155,16 @@ Ejemplo de actualización parcial:
 ```
 
 Al modificar nombre o apellido, se sincroniza el `holderName` de la cuenta.
+El perfil no acepta contraseñas: para cambiarla se utiliza Auth Service y se debe enviar la contraseña actual y la nueva.
+
+```json
+{
+  "currentPassword": "ClaveActual123",
+  "newPassword": "NuevaClaveSegura123"
+}
+```
+
+Por seguridad, un login con usuario inexistente o contraseña incorrecta siempre responde `401` con el mensaje genérico `Credenciales inválidas`. Las rutas `/internal/**` están reservadas a comunicación entre servicios y no se exponen por el Gateway.
 
 ### Cuenta, tarjetas e ingresos
 
@@ -234,7 +245,8 @@ La planificación, casos, ejecución exploratoria y cierre de calidad están ver
 - **Keycloak y JWT:** la identidad, contraseñas y tokens se delegan a Keycloak; los servicios validan los JWT en el Gateway y en sus propias fronteras.
 - **Datos por dominio:** cada microservicio mantiene su propia base MySQL para reducir acoplamiento.
 - **Gateway y Eureka:** el Gateway centraliza el acceso externo; Eureka permite descubrir los servicios sin direcciones codificadas.
-- **Cliente técnico:** Auth Service usa un cliente de servicio para coordinar altas y actualizaciones necesarias sin exponer credenciales de administración al frontend.
+- **Cliente técnico:** Auth y Users usan el mismo mecanismo `client_credentials` con rol `SERVICE`; el token técnico se reutiliza hasta antes de vencer y nunca se propaga el JWT del usuario entre microservicios.
+- **Errores entre servicios:** las respuestas recibidas por OpenFeign conservan su código HTTP y un mensaje seguro, evitando convertir errores de negocio en `500`.
 - **Transferencias atómicas:** la operación valida destinatario y fondos antes de actualizar ambos saldos y registrar los movimientos relacionados.
 - **Secretos fuera del repositorio:** `.env` está ignorado; `.env.example` funciona como contrato de configuración reproducible.
 

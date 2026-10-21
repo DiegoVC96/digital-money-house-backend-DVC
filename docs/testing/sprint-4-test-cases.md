@@ -1,14 +1,20 @@
 # Casos de prueba — Sprint 4
 
-| ID | Escenario | Resultado esperado |
-|---|---|---|
-| S4-01 | Transferir a un alias existente con saldo suficiente. | HTTP 200, movimiento `TRANSFER_OUT`, débito en origen y crédito en destino. |
-| S4-02 | Transferir a un CVU existente de 22 dígitos. | HTTP 200 y transferencia aplicada. |
-| S4-03 | Consultar `GET /api/accounts/{accountId}/transferences` como propietario. | HTTP 200 y destinatarios recientes sin repeticiones. |
-| S4-04 | Consultar destinatarios de una cuenta ajena. | HTTP 403. |
-| S4-05 | Transferir a alias o CVU inexistente. | HTTP 400 y mensaje de cuenta de destino inexistente. |
-| S4-06 | Transferir un importe superior al saldo. | HTTP 410 y saldos sin cambios. |
-| S4-07 | Intentar transferir a la propia cuenta. | HTTP 400. |
-| S4-08 | FrontEnd: enviar dinero y abrir detalle. | Saldo actualizado y detalle con importe y descripción. |
-| S4-09 | FrontEnd: seleccionar una cuenta dentro de los últimos destinatarios. | Se muestran hasta cinco destinatarios únicos y se completa el destino de la transferencia. |
-| S4-10 | FrontEnd: descargar el comprobante desde el detalle de una operación. | Se descarga un PDF con importe, operación, descripción, fecha y número de operación iguales al detalle mostrado. |
+| ID | Suite | Escenario | Resultado esperado | Estado manual |
+|---|---|---|---|---|
+| S4-01 | Smoke | Transferir a un alias existente con saldo suficiente. | HTTP 200, movimiento `TRANSFER_OUT`, débito y crédito aplicados. | Aprobado |
+| S4-02 | Regression | Transferir a un CVU existente de 22 dígitos. | HTTP 200 y transferencia aplicada. | Aprobado |
+| S4-03 | Regression | Consultar destinatarios como propietario. | HTTP 200, hasta cinco destinatarios únicos. | Aprobado |
+| S4-04 | Regression | Consultar destinatarios de una cuenta ajena. | HTTP 403. | Aprobado |
+| S4-05 | Regression | Transferir a alias o CVU inexistente. | HTTP 400 y mensaje de destino inexistente. | Aprobado |
+| S4-06 | Regression | Transferir un importe superior al saldo. | HTTP 410 y saldos sin cambios. | Aprobado |
+| S4-07 | Regression | Transferir a la propia cuenta. | HTTP 400 y saldo sin cambios. | Pendiente de ejecución Postman |
+| S4-08 | Regression | Transferir importe cero o negativo. | HTTP 400 y sin movimientos. | Pendiente de ejecución Postman |
+| S4-09 | Smoke | Enviar una transferencia sin token. | HTTP 401. | Pendiente de ejecución Postman |
+| S4-10 | Regression | Intentar una transferencia desde una cuenta ajena. | HTTP 403. | Cubierto por prueba automática |
+| S4-11 | Regression | Ejecutar dos débitos concurrentes por el saldo total. | Solo un débito es exitoso y el saldo no queda negativo. | Cubierto por prueba automática |
+| S4-12 | Regression | Validar el controlador con transferencia válida, importe inválido y fondos insuficientes. | HTTP 200, 400 y 410 respectivamente. | Cubierto por prueba automática |
+| S4-13 | Smoke | Transferir a un destinatario configurado y consultar recientes. | HTTP 200 y destinatario presente en la respuesta. | Cubierto por smoke test configurable |
+| S4-14 | Regression | Ver detalle de transferencia desde el FrontEnd. | Monto y descripción correctos. | Aprobado |
+| S4-15 | Regression | Descargar comprobante de una operación. | PDF con los mismos datos del detalle. | Aprobado |
+| S4-16 | Regression | Seleccionar un destinatario reciente en Enviar dinero. | Se completan los datos del destino seleccionado. | Aprobado |

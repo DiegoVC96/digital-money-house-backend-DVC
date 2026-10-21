@@ -21,6 +21,12 @@ spring:
 server:
   port: 8082
 
+keycloak:
+  base-url: http://localhost:8180
+  realm: digital-money-house
+  service-client-id: auth-service
+  service-client-secret: ${KEYCLOAK_AUTH_SERVICE_SECRET}
+
 eureka:
   instance:
     hostname: ${EUREKA_INSTANCE_HOSTNAME:localhost}
